@@ -4,7 +4,7 @@ import { runAudit } from '@/lib/psi';
 import { runCustomChecks } from '@/lib/scraper';
 import { generateReportId } from '@/lib/reportUtils';
 
-export const maxDuration = 45;
+export const maxDuration = 120;
 
 async function extractBusinessName(url: string): Promise<string> {
   try {
@@ -22,9 +22,8 @@ async function extractBusinessName(url: string): Promise<string> {
     const html = await response.text();
     const titleMatch = html.match(/<title[^>]*>([^<]*)<\/title>/i);
 
-    if (titleMatch && titleMatch[1]) {
+    if (titleMatch?.[1]) {
       let title = titleMatch[1].trim();
-      // Clean common suffixes
       title = title.replace(/\s*[-|–—]\s*(Home|Homepage|Welcome).*$/i, '');
       title = title.replace(/\s*[-|–—]\s*$/, '');
       return title.substring(0, 100) || new URL(url).hostname;
@@ -53,7 +52,7 @@ export async function POST(request: NextRequest) {
   try {
     // Verify auth
     const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json(
         { error: 'Unauthorized. Please sign in.' },
         { status: 401 }
@@ -64,7 +63,8 @@ export async function POST(request: NextRequest) {
     let decodedToken;
     try {
       decodedToken = await adminAuth.verifyIdToken(token);
-    } catch {
+    } catch (err) {
+      console.error('Token verification failed:', err);
       return NextResponse.json(
         { error: 'Invalid or expired authentication token.' },
         { status: 401 }
@@ -100,17 +100,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Run audit, custom checks, and business name extraction in parallel
+    // Run all tasks in parallel
     const [auditResult, customChecks, businessName] = await Promise.all([
       runAudit(url),
       runCustomChecks(url),
       extractBusinessName(url),
     ]);
 
-    // Generate screenshot URL
     const screenshotUrl = generateScreenshotUrl(url);
-
-    // Generate report ID
     const reportId = generateReportId();
 
     // Save to Firestore
@@ -138,15 +135,8 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Audit error:', error);
-
-    const message = error instanceof Error ? error.message : 'An unexpected error occurred';
-
-    if (message.includes('timeout') || message.includes('abort')) {
-      return NextResponse.json(
-        { error: 'The audit timed out. The website may be too slow or unreachable.' },
-        { status: 504 }
-      );
-    }
+    const message =
+      error instanceof Error ? error.message : 'An unexpected error occurred';
 
     return NextResponse.json(
       { error: `Audit failed: ${message}` },

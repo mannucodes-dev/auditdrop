@@ -37,8 +37,17 @@ function getAdminApp(): App {
     );
   }
 
-  // Environment variables store literal "\\n" — replace with real newlines
-  const privateKey = privateKeyRaw.replace(/\\n/g, '\n');
+  // .env files may store the private key with literal "\n" (two chars) or
+  // actual newlines. Handle both, then ensure PEM wrapper is present.
+  let privateKey = privateKeyRaw
+    .replace(/\\n/g, '\n')   // literal two-char "\n" → real newline
+    .replace(/\\\\n/g, '\n') // double-escaped "\\n" → real newline
+    .trim();
+
+  // If the PEM header is missing, wrap the key
+  if (!privateKey.includes('-----BEGIN')) {
+    privateKey = `-----BEGIN PRIVATE KEY-----\n${privateKey}\n-----END PRIVATE KEY-----\n`;
+  }
 
   const serviceAccount: ServiceAccount = {
     projectId,

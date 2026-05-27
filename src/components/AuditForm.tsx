@@ -35,10 +35,9 @@ export default function AuditForm({ onSuccess }: AuditFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [statusIdx, setStatusIdx] = useState(0);
 
-  // Cycle loading messages every 3 seconds
+  // Cycle loading messages every 3 seconds while loading
   useEffect(() => {
     if (!loading) return;
-    setStatusIdx(0);
     const interval = setInterval(() => {
       setStatusIdx((prev) => (prev + 1) % STATUS_MESSAGES.length);
     }, 3000);
@@ -57,14 +56,27 @@ export default function AuditForm({ onSuccess }: AuditFormProps) {
       }
 
       setLoading(true);
+      setStatusIdx(0);
 
       try {
-        const user = auth.currentUser;
+        // Wait for Firebase auth to fully initialise before reading the user.
+        // auth.currentUser can be null if the component mounts before the SDK
+        // has rehydrated the session — onAuthStateChanged is the safe way to wait.
+        const user = await new Promise<import('firebase/auth').User | null>(
+          (resolve) => {
+            const unsubscribe = auth.onAuthStateChanged((u) => {
+              unsubscribe();
+              resolve(u);
+            });
+          }
+        );
+
         if (!user) {
           throw new Error('You must be signed in to run an audit.');
         }
 
-        const token = await user.getIdToken();
+        // Force-refresh=true ensures we never send an expired token
+        const token = await user.getIdToken(true);
 
         const res = await fetch('/api/audit', {
           method: 'POST',
@@ -136,7 +148,7 @@ export default function AuditForm({ onSuccess }: AuditFormProps) {
             className={`
               relative overflow-hidden rounded-xl px-8 py-4
               font-semibold text-white text-base
-              bg-gradient-to-r from-violet-600 to-violet-500
+              bg-linear-to-r from-violet-600 to-violet-500
               transition-all duration-200
               hover:from-violet-500 hover:to-violet-400
               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950

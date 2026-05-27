@@ -7,7 +7,7 @@ export default function NewAuditPage() {
   const router = useRouter();
 
   const handleSuccess = (reportId: string) => {
-    router.push('/dashboard');
+    router.push(`/r/${reportId}`);
   };
 
   return (

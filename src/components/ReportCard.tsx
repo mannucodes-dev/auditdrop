@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Report } from '@/hooks/useReports';
-import { getScoreColor, getScoreLabel } from '@/lib/reportUtils';
+import { getScoreColor } from '@/lib/reportUtils';
 import { Timestamp } from 'firebase/firestore';
 
 interface ReportCardProps {

@@ -48,11 +48,10 @@ export function useReports(userId: string): ReportsState {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!userId) {
-      setReports([]);
-      setLoading(false);
-      return;
-    }
+    // No userId → nothing to subscribe to; keep initial state (empty + loading=true)
+    // The loading state will be corrected by the onSnapshot callback once a
+    // valid userId is provided.
+    if (!userId) return;
 
     const reportsRef = collection(db, 'reports');
     const reportsQuery = query(
@@ -79,6 +78,11 @@ export function useReports(userId: string): ReportsState {
 
     return () => unsubscribe();
   }, [userId]);
+
+  // When there's no userId, return empty state directly
+  if (!userId) {
+    return { reports: [], loading: false };
+  }
 
   return { reports, loading };
 }
