@@ -20,9 +20,11 @@ async function getReportData(reportId: string) {
     businessUrl: data?.businessUrl || '',
     screenshotUrl: data?.screenshotUrl || '',
     mobileScore: data?.mobileScore || 0,
-    desktopScore: data?.desktopScore || 0,
+    desktopScore: data?.desktopScore ?? null,
     metrics: data?.metrics || { fcp: 'N/A', lcp: 'N/A', tbt: 'N/A', cls: 'N/A' },
     checks: data?.checks || {},
+    seoChecks: data?.seoChecks || undefined,
+    competitors: data?.competitors || undefined,
     viewCount: data?.viewCount || 0,
     userId: data?.userId || '',
   };

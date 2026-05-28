@@ -13,7 +13,7 @@ export interface PSIMetrics {
 
 export interface PSIResult {
   mobileScore: number;
-  desktopScore: number;
+  desktopScore: number | null;
   metrics: PSIMetrics;
 }
 
@@ -116,13 +116,13 @@ export async function runAudit(url: string): Promise<PSIResult> {
     );
   }
 
-  // Use whichever succeeded, fall back to 0/empty for the other
+  // Use whichever succeeded, fall back to null for the other
   const mobileScore = mobileRes
     ? scoreToPercent(mobileRes.lighthouseResult.categories.performance.score)
     : 0;
   const desktopScore = desktopRes
     ? scoreToPercent(desktopRes.lighthouseResult.categories.performance.score)
-    : 0;
+    : null;
 
   // Prefer mobile metrics, fall back to desktop
   const metrics = mobileRes

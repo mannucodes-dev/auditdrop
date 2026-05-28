@@ -2,7 +2,24 @@
 
 import ScoreDial from './ScoreDial';
 import IssueCard from './IssueCard';
-import { generateIssues } from '@/lib/reportUtils';
+import { generateIssues, generateVerdict } from '@/lib/reportUtils';
+import type { SEOChecks } from '@/lib/scraper';
+
+interface CompetitorData {
+  url: string;
+  businessName: string;
+  mobileScore: number;
+  desktopScore: number | null;
+  checks: {
+    hasPhone: boolean | null;
+    hasClickToCall: boolean | null;
+    hasHttps: boolean | null;
+    hasAnalytics: boolean | null;
+    hasViewport: boolean | null;
+    hasContactForm: boolean | null;
+  };
+  seoChecks?: SEOChecks;
+}
 
 interface ReportData {
   id: string;
@@ -10,7 +27,7 @@ interface ReportData {
   businessUrl: string;
   screenshotUrl?: string;
   mobileScore: number;
-  desktopScore: number;
+  desktopScore: number | null;
   metrics: {
     fcp: string;
     lcp: string;
@@ -25,6 +42,8 @@ interface ReportData {
     hasViewport: boolean | null;
     hasContactForm: boolean | null;
   };
+  seoChecks?: SEOChecks;
+  competitors?: CompetitorData[];
 }
 
 interface OwnerProfile {
@@ -61,8 +80,77 @@ const METRIC_CONTEXT: Record<string, { label: string; description: string; icon:
   },
 };
 
+// SEO checks labels for the scorecard
+const SEO_CHECK_LABELS: Record<string, string> = {
+  hasMetaTitle: 'Page Title',
+  hasMetaDescription: 'Meta Description',
+  hasH1: 'Main Heading (H1)',
+  hasCanonical: 'Canonical URL',
+  hasStructuredData: 'Structured Data (Schema)',
+  hasOpenGraph: 'Open Graph Tags',
+};
+
+const VERDICT_COLORS = {
+  critical: {
+    border: 'border-l-red-500',
+    bg: 'bg-red-500/5',
+    textLarge: 'text-red-400',
+    icon: '🚨',
+  },
+  poor: {
+    border: 'border-l-amber-500',
+    bg: 'bg-amber-500/5',
+    textLarge: 'text-amber-400',
+    icon: '⚠️',
+  },
+  fair: {
+    border: 'border-l-yellow-500',
+    bg: 'bg-yellow-500/5',
+    textLarge: 'text-yellow-400',
+    icon: '💡',
+  },
+};
+
+function CheckIcon({ pass }: { pass: boolean }) {
+  return pass ? (
+    <span className="text-emerald-400 text-lg">✅</span>
+  ) : (
+    <span className="text-red-400 text-lg">❌</span>
+  );
+}
+
+function ScoreBadge({ score, isNull }: { score: number | null; isNull?: boolean }) {
+  if (isNull || score === null || score === undefined) {
+    return <span className="px-2 py-0.5 rounded-md bg-slate-700/60 text-xs text-slate-400">N/A</span>;
+  }
+  const color =
+    score >= 90
+      ? 'bg-emerald-500/20 text-emerald-400'
+      : score >= 50
+        ? 'bg-amber-500/20 text-amber-400'
+        : 'bg-red-500/20 text-red-400';
+  return <span className={`px-2 py-0.5 rounded-md text-xs font-bold ${color}`}>{score}</span>;
+}
+
 export default function ReportPage({ report, ownerProfile }: ReportPageProps) {
-  const issues = generateIssues(report.checks, report.metrics, report.mobileScore);
+  const issues = generateIssues(report.checks, report.metrics, report.mobileScore, report.seoChecks);
+  const verdict = generateVerdict(report.mobileScore, report.checks);
+  const verdictStyle = VERDICT_COLORS[verdict.severity];
+
+  // SEO scorecard data
+  const seoChecks = report.seoChecks;
+  const seoEntries = seoChecks
+    ? Object.entries(SEO_CHECK_LABELS).map(([key, label]) => ({
+        key,
+        label,
+        pass: seoChecks[key as keyof SEOChecks] as boolean,
+      }))
+    : [];
+  const seoPassList = seoEntries.filter((e) => e.pass);
+  const seoFailList = seoEntries.filter((e) => !e.pass);
+
+  // Competitor data
+  const competitors = report.competitors || [];
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
@@ -114,6 +202,33 @@ export default function ReportPage({ report, ownerProfile }: ReportPageProps) {
           </section>
         )}
 
+        {/* ── Verdict Banner (Feature 1) ── */}
+        <section className="mb-10">
+          <div
+            className={`
+              rounded-xl border-l-4 ${verdictStyle.border} ${verdictStyle.bg}
+              border border-slate-800 p-6 sm:p-8
+              transition-all duration-300
+            `}
+          >
+            <div className="flex items-start gap-3">
+              <span className="text-2xl mt-0.5">{verdictStyle.icon}</span>
+              <div>
+                <p className={`text-xl sm:text-2xl font-bold ${verdictStyle.textLarge}`}>
+                  Estimated Lost Leads: ~{verdict.lostLeadsMin}–{verdict.lostLeadsMax} per month
+                </p>
+                <p className="text-slate-300 mt-2 text-sm sm:text-base">
+                  {verdict.verdictText}
+                </p>
+                <p className="text-slate-500 mt-3 text-xs leading-relaxed">
+                  Based on industry averages for businesses in this category.
+                  Actual impact depends on your traffic volume.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* Score Section */}
         <section className="mb-10">
           <h2 className="text-xl font-semibold text-slate-200 mb-6 text-center">Performance Scores</h2>
@@ -164,9 +279,202 @@ export default function ReportPage({ report, ownerProfile }: ReportPageProps) {
                   title={issue.title}
                   body={issue.body}
                   impact={issue.impact as 'High' | 'Medium' | 'Low'}
+                  fixTime={issue.fixTime}
+                  fixCost={issue.fixCost}
+                  fixDifficulty={issue.fixDifficulty}
+                  fixDescription={issue.fixDescription}
                 />
               ))}
             </div>
+          </section>
+        )}
+
+        {/* ── SEO Health Section (Feature 2) ── */}
+        {seoChecks && seoEntries.length > 0 && (
+          <section className="mb-10">
+            <div className="flex items-center gap-3 mb-6">
+              <h2 className="text-xl font-semibold text-slate-200">SEO Health</h2>
+              <span className="px-2.5 py-0.5 bg-violet-500/10 border border-violet-500/20 rounded-full text-violet-400 text-sm font-medium">
+                {seoPassList.length}/{seoEntries.length} passing
+              </span>
+            </div>
+
+            <div className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden">
+              {/* Failing checks */}
+              {seoFailList.length > 0 && (
+                <div className="p-4 sm:p-5">
+                  <h3 className="text-sm font-semibold text-red-400 mb-3 flex items-center gap-2">
+                    <span>❌</span> What needs fixing
+                  </h3>
+                  <div className="space-y-2">
+                    {seoFailList.map((entry) => (
+                      <div
+                        key={entry.key}
+                        className="flex items-center gap-3 py-2 px-3 rounded-lg bg-red-500/5 border border-red-500/10"
+                      >
+                        <CheckIcon pass={false} />
+                        <span className="text-sm text-slate-300">{entry.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Passing checks */}
+              {seoPassList.length > 0 && (
+                <div className={`p-4 sm:p-5 ${seoFailList.length > 0 ? 'border-t border-slate-800' : ''}`}>
+                  <h3 className="text-sm font-semibold text-emerald-400 mb-3 flex items-center gap-2">
+                    <span>✅</span> What&apos;s working
+                  </h3>
+                  <div className="space-y-2">
+                    {seoPassList.map((entry) => (
+                      <div
+                        key={entry.key}
+                        className="flex items-center gap-3 py-2 px-3 rounded-lg bg-emerald-500/5 border border-emerald-500/10"
+                      >
+                        <CheckIcon pass={true} />
+                        <span className="text-sm text-slate-300">{entry.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Title length info */}
+              {seoChecks.hasMetaTitle && (
+                <div className="px-4 sm:px-5 pb-4">
+                  <div className="flex items-center gap-2 py-2 px-3 rounded-lg bg-slate-800/50 text-xs text-slate-400">
+                    <span>📏</span>
+                    Title length: {seoChecks.titleLength} characters
+                    {seoChecks.titleTooLong && <span className="text-amber-400 ml-1">(too long — aim for under 60)</span>}
+                    {seoChecks.titleTooShort && <span className="text-amber-400 ml-1">(too short — aim for 30–60)</span>}
+                    {!seoChecks.titleTooLong && !seoChecks.titleTooShort && <span className="text-emerald-400 ml-1">(good length)</span>}
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* ── Competitor Comparison (Feature 3) ── */}
+        {competitors.length > 0 && (
+          <section className="mb-10">
+            <div className="flex items-center gap-3 mb-6">
+              <h2 className="text-xl font-semibold text-slate-200">Competitor Comparison</h2>
+              <span className="px-2.5 py-0.5 bg-violet-500/10 border border-violet-500/20 rounded-full text-violet-400 text-sm font-medium">
+                vs {competitors.length} competitor{competitors.length > 1 ? 's' : ''}
+              </span>
+            </div>
+
+            {/* Comparison Table */}
+            <div className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-800">
+                    <th className="text-left text-slate-400 font-medium px-4 py-3 min-w-[140px]">Metric</th>
+                    <th className="text-center text-violet-400 font-semibold px-4 py-3">
+                      Your Site
+                    </th>
+                    {competitors.map((comp, i) => (
+                      <th key={i} className="text-center text-slate-400 font-medium px-4 py-3 max-w-[140px] truncate">
+                        {comp.businessName || `Competitor ${i + 1}`}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/50">
+                  {/* Mobile Score */}
+                  <tr className="hover:bg-slate-800/30 transition-colors">
+                    <td className="px-4 py-3 text-slate-300">📱 Mobile Score</td>
+                    <td className="px-4 py-3 text-center">
+                      <ScoreBadge score={report.mobileScore} />
+                    </td>
+                    {competitors.map((comp, i) => (
+                      <td key={i} className="px-4 py-3 text-center">
+                        <ScoreBadge score={comp.mobileScore} />
+                      </td>
+                    ))}
+                  </tr>
+                  {/* Desktop Score */}
+                  <tr className="hover:bg-slate-800/30 transition-colors">
+                    <td className="px-4 py-3 text-slate-300">🖥️ Desktop Score</td>
+                    <td className="px-4 py-3 text-center">
+                      <ScoreBadge score={report.desktopScore} />
+                    </td>
+                    {competitors.map((comp, i) => (
+                      <td key={i} className="px-4 py-3 text-center">
+                        <ScoreBadge score={comp.desktopScore} />
+                      </td>
+                    ))}
+                  </tr>
+                  {/* HTTPS */}
+                  <tr className="hover:bg-slate-800/30 transition-colors">
+                    <td className="px-4 py-3 text-slate-300">🔒 Has HTTPS</td>
+                    <td className="px-4 py-3 text-center">
+                      <CheckIcon pass={report.checks.hasHttps === true} />
+                    </td>
+                    {competitors.map((comp, i) => (
+                      <td key={i} className="px-4 py-3 text-center">
+                        <CheckIcon pass={comp.checks.hasHttps === true} />
+                      </td>
+                    ))}
+                  </tr>
+                  {/* Click-to-Call */}
+                  <tr className="hover:bg-slate-800/30 transition-colors">
+                    <td className="px-4 py-3 text-slate-300">📞 Click-to-Call</td>
+                    <td className="px-4 py-3 text-center">
+                      <CheckIcon pass={report.checks.hasClickToCall === true} />
+                    </td>
+                    {competitors.map((comp, i) => (
+                      <td key={i} className="px-4 py-3 text-center">
+                        <CheckIcon pass={comp.checks.hasClickToCall === true} />
+                      </td>
+                    ))}
+                  </tr>
+                  {/* Meta Description */}
+                  <tr className="hover:bg-slate-800/30 transition-colors">
+                    <td className="px-4 py-3 text-slate-300">🔍 Meta Description</td>
+                    <td className="px-4 py-3 text-center">
+                      <CheckIcon pass={report.seoChecks?.hasMetaDescription === true} />
+                    </td>
+                    {competitors.map((comp, i) => (
+                      <td key={i} className="px-4 py-3 text-center">
+                        <CheckIcon pass={comp.seoChecks?.hasMetaDescription === true} />
+                      </td>
+                    ))}
+                  </tr>
+                  {/* H1 */}
+                  <tr className="hover:bg-slate-800/30 transition-colors">
+                    <td className="px-4 py-3 text-slate-300">🏷️ Main Heading (H1)</td>
+                    <td className="px-4 py-3 text-center">
+                      <CheckIcon pass={report.seoChecks?.hasH1 === true} />
+                    </td>
+                    {competitors.map((comp, i) => (
+                      <td key={i} className="px-4 py-3 text-center">
+                        <CheckIcon pass={comp.seoChecks?.hasH1 === true} />
+                      </td>
+                    ))}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Insight line */}
+            {competitors[0] && (
+              <div className="mt-4 bg-slate-900/40 border border-slate-800 rounded-xl p-4">
+                <p className="text-sm text-slate-300 leading-relaxed">
+                  <span className="text-violet-400 font-medium">💡 Insight: </span>
+                  Your site scores <span className="font-bold text-white">{report.mobileScore}</span> on mobile.{' '}
+                  <span className="font-medium text-white">{competitors[0].businessName || 'Your competitor'}</span>{' '}
+                  scores <span className="font-bold text-white">{competitors[0].mobileScore}</span>.{' '}
+                  {report.mobileScore < competitors[0].mobileScore
+                    ? 'Customers are more likely to find and trust the faster site.'
+                    : report.mobileScore > competitors[0].mobileScore
+                      ? 'You\'re ahead on speed, but there may be other areas to improve.'
+                      : 'You\'re neck and neck — small improvements can give you the edge.'}
+                </p>
+              </div>
+            )}
           </section>
         )}
 

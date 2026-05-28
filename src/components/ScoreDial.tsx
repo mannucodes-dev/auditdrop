@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 
 interface ScoreDialProps {
-  score: number;
+  score: number | null;
   size?: 'sm' | 'md' | 'lg';
   label?: string;
 }
@@ -49,9 +49,12 @@ export default function ScoreDial({
   const dims = sizeMap[size];
   const radius = (dims.width - dims.stroke) / 2;
   const circumference = 2 * Math.PI * radius;
-  const clampedScore = Math.max(0, Math.min(100, Math.round(score)));
+  const isNull = score === null || score === undefined;
+  const clampedScore = isNull ? 0 : Math.max(0, Math.min(100, Math.round(score)));
   const offset = circumference - (clampedScore / 100) * circumference;
-  const color = getScoreColor(clampedScore);
+  const color = isNull
+    ? { stroke: '#475569', text: 'text-slate-500', glow: 'none' }
+    : getScoreColor(clampedScore);
   const center = dims.width / 2;
 
   useEffect(() => {
@@ -61,13 +64,13 @@ export default function ScoreDial({
   }, []);
 
   return (
-    <div className="flex flex-col items-center gap-1.5" role="figure" aria-label={`${label ? label + ' ' : ''}score: ${clampedScore} out of 100`}>
+    <div className="flex flex-col items-center gap-1.5" role="figure" aria-label={`${label ? label + ' ' : ''}score: ${isNull ? 'N/A' : clampedScore + ' out of 100'}`}>
       <svg
         width={dims.width}
         height={dims.width}
         viewBox={`0 0 ${dims.width} ${dims.width}`}
         className="transform -rotate-90"
-        style={{ filter: mounted ? color.glow : 'none' }}
+        style={{ filter: mounted && !isNull ? color.glow : 'none' }}
       >
         {/* Background track */}
         <circle
@@ -79,20 +82,22 @@ export default function ScoreDial({
           strokeWidth={dims.stroke}
         />
         {/* Score arc */}
-        <circle
-          cx={center}
-          cy={center}
-          r={radius}
-          fill="none"
-          stroke={color.stroke}
-          strokeWidth={dims.stroke}
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={mounted ? offset : circumference}
-          style={{
-            transition: 'stroke-dashoffset 1.2s cubic-bezier(0.4, 0, 0.2, 1)',
-          }}
-        />
+        {!isNull && (
+          <circle
+            cx={center}
+            cy={center}
+            r={radius}
+            fill="none"
+            stroke={color.stroke}
+            strokeWidth={dims.stroke}
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={mounted ? offset : circumference}
+            style={{
+              transition: 'stroke-dashoffset 1.2s cubic-bezier(0.4, 0, 0.2, 1)',
+            }}
+          />
+        )}
       </svg>
 
       {/* Score number overlaid in the center */}
@@ -106,9 +111,9 @@ export default function ScoreDial({
       >
         <span
           className={`font-bold tabular-nums ${color.text}`}
-          style={{ fontSize: dims.fontSize }}
+          style={{ fontSize: isNull ? dims.fontSize * 0.5 : dims.fontSize }}
         >
-          {clampedScore}
+          {isNull ? 'N/A' : clampedScore}
         </span>
       </div>
 

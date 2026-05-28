@@ -6,6 +6,20 @@ import { generateReportId } from '@/lib/reportUtils';
 
 export const maxDuration = 120;
 
+function decodeHtmlEntities(str: string): string {
+  return str
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;/g, "'")
+    .replace(/&#8211;/g, '–')
+    .replace(/&#8212;/g, '—')
+    .replace(/&ndash;/g, '–')
+    .replace(/&mdash;/g, '—')
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(Number(dec)));
+}
+
 async function extractBusinessName(url: string): Promise<string> {
   try {
     const controller = new AbortController();
@@ -23,7 +37,7 @@ async function extractBusinessName(url: string): Promise<string> {
     const titleMatch = html.match(/<title[^>]*>([^<]*)<\/title>/i);
 
     if (titleMatch?.[1]) {
-      let title = titleMatch[1].trim();
+      let title = decodeHtmlEntities(titleMatch[1].trim());
       title = title.replace(/\s*[-|–—]\s*(Home|Homepage|Welcome).*$/i, '');
       title = title.replace(/\s*[-|–—]\s*$/, '');
       return title.substring(0, 100) || new URL(url).hostname;
@@ -76,6 +90,9 @@ export async function POST(request: NextRequest) {
     // Parse body
     const body = await request.json();
     let { url } = body;
+    const competitorUrls: string[] = Array.isArray(body.competitors)
+      ? body.competitors.filter((c: unknown) => typeof c === 'string' && c.trim()).slice(0, 2)
+      : [];
 
     if (!url || typeof url !== 'string') {
       return NextResponse.json(
@@ -100,8 +117,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Normalize competitor URLs
+    const normalizedCompetitors: string[] = [];
+    for (const cUrl of competitorUrls) {
+      let normalized = cUrl.trim();
+      if (!normalized.startsWith('http://') && !normalized.startsWith('https://')) {
+        normalized = 'https://' + normalized;
+      }
+      try {
+        new URL(normalized);
+        normalizedCompetitors.push(normalized);
+      } catch {
+        // Skip invalid competitor URLs silently
+      }
+    }
+
     // Run all tasks in parallel
-    const [auditResult, customChecks, businessName] = await Promise.all([
+    const [auditResult, scraperResult, businessName] = await Promise.all([
       runAudit(url),
       runCustomChecks(url),
       extractBusinessName(url),
@@ -110,8 +142,37 @@ export async function POST(request: NextRequest) {
     const screenshotUrl = generateScreenshotUrl(url);
     const reportId = generateReportId();
 
+    // Run competitor audits in parallel (if any)
+    const competitors = await Promise.all(
+      normalizedCompetitors.map(async (compUrl) => {
+        try {
+          const [compAudit, compScraper, compName] = await Promise.all([
+            runAudit(compUrl),
+            runCustomChecks(compUrl),
+            extractBusinessName(compUrl),
+          ]);
+          return {
+            url: compUrl,
+            businessName: compName,
+            mobileScore: compAudit.mobileScore,
+            desktopScore: compAudit.desktopScore,
+            checks: compScraper.checks,
+            seoChecks: compScraper.seoChecks,
+          };
+        } catch (err) {
+          console.error(`Competitor audit failed for ${compUrl}:`, err);
+          return null;
+        }
+      })
+    );
+
+    // Filter out failed competitor audits
+    const validCompetitors = competitors.filter(
+      (c): c is NonNullable<typeof c> => c !== null
+    );
+
     // Save to Firestore
-    const reportData = {
+    const reportData: Record<string, unknown> = {
       userId,
       businessUrl: url,
       businessName,
@@ -119,11 +180,16 @@ export async function POST(request: NextRequest) {
       mobileScore: auditResult.mobileScore,
       desktopScore: auditResult.desktopScore,
       metrics: auditResult.metrics,
-      checks: customChecks,
+      checks: scraperResult.checks,
+      seoChecks: scraperResult.seoChecks,
       viewCount: 0,
       lastViewedAt: null,
       createdAt: new Date(),
     };
+
+    if (validCompetitors.length > 0) {
+      reportData.competitors = validCompetitors;
+    }
 
     await adminDb.collection('reports').doc(reportId).set(reportData);
 

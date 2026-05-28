@@ -7,6 +7,23 @@ export interface CustomChecks {
   hasContactForm: boolean | null;
 }
 
+export interface SEOChecks {
+  hasMetaTitle: boolean;
+  hasMetaDescription: boolean;
+  hasH1: boolean;
+  hasCanonical: boolean;
+  hasStructuredData: boolean;
+  hasOpenGraph: boolean;
+  titleLength: number;
+  titleTooLong: boolean;
+  titleTooShort: boolean;
+}
+
+export interface ScraperResult {
+  checks: CustomChecks;
+  seoChecks: SEOChecks;
+}
+
 const USER_AGENT = 'Mozilla/5.0 (compatible; AuditDropBot/1.0)';
 const FETCH_TIMEOUT_MS = 10_000;
 
@@ -43,7 +60,21 @@ function nullChecks(): CustomChecks {
   };
 }
 
-export async function runCustomChecks(url: string): Promise<CustomChecks> {
+function emptySeoChecks(): SEOChecks {
+  return {
+    hasMetaTitle: false,
+    hasMetaDescription: false,
+    hasH1: false,
+    hasCanonical: false,
+    hasStructuredData: false,
+    hasOpenGraph: false,
+    titleLength: 0,
+    titleTooLong: false,
+    titleTooShort: false,
+  };
+}
+
+export async function runCustomChecks(url: string): Promise<ScraperResult> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
@@ -57,18 +88,20 @@ export async function runCustomChecks(url: string): Promise<CustomChecks> {
     });
 
     if (!response.ok) {
-      return nullChecks();
+      return { checks: nullChecks(), seoChecks: emptySeoChecks() };
     }
 
     html = await response.text();
   } catch {
     // Network error, timeout, or any other failure — return unknowns
-    return nullChecks();
+    return { checks: nullChecks(), seoChecks: emptySeoChecks() };
   } finally {
     clearTimeout(timeout);
   }
 
   const lowerHtml = html.toLowerCase();
+
+  // ── Custom Checks ──────────────────────────────────────────────
 
   const hasPhone = PHONE_REGEX.test(html);
 
@@ -87,7 +120,7 @@ export async function runCustomChecks(url: string): Promise<CustomChecks> {
 
   const hasContactForm = lowerHtml.includes('<form');
 
-  return {
+  const checks: CustomChecks = {
     hasPhone,
     hasClickToCall,
     hasHttps,
@@ -95,4 +128,45 @@ export async function runCustomChecks(url: string): Promise<CustomChecks> {
     hasViewport,
     hasContactForm,
   };
+
+  // ── SEO Checks ─────────────────────────────────────────────────
+
+  // Title
+  const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  const titleContent = titleMatch?.[1]?.trim() ?? '';
+  const titleLength = titleContent.length;
+  const hasMetaTitle = titleLength > 0;
+  const titleTooLong = titleLength > 60;
+  const titleTooShort = titleLength < 10 && titleLength > 0;
+
+  // Meta description
+  const hasMetaDescription =
+    /<meta\s[^>]*name=["']description["'][^>]*content=["'][^"']+["'][^>]*>/i.test(html) ||
+    /<meta\s[^>]*content=["'][^"']+["'][^>]*name=["']description["'][^>]*>/i.test(html);
+
+  // H1
+  const hasH1 = /<h1[\s>]/i.test(html);
+
+  // Canonical
+  const hasCanonical = /<link\s[^>]*rel=["']canonical["'][^>]*>/i.test(html);
+
+  // Structured data (JSON-LD)
+  const hasStructuredData = lowerHtml.includes('application/ld+json');
+
+  // Open Graph
+  const hasOpenGraph = /<meta\s[^>]*property=["']og:title["'][^>]*>/i.test(html);
+
+  const seoChecks: SEOChecks = {
+    hasMetaTitle,
+    hasMetaDescription,
+    hasH1,
+    hasCanonical,
+    hasStructuredData,
+    hasOpenGraph,
+    titleLength,
+    titleTooLong,
+    titleTooShort,
+  };
+
+  return { checks, seoChecks };
 }

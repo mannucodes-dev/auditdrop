@@ -33,7 +33,7 @@ export interface Report {
   businessName: string;
   screenshotUrl?: string;
   mobileScore: number;
-  desktopScore: number;
+  desktopScore: number | null;
   metrics: AuditMetrics;
   issues: AuditIssue[];
   ownerProfile: OwnerProfile;

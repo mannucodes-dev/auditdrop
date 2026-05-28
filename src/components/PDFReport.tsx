@@ -87,7 +87,8 @@ export async function generatePDF(
   doc.text(`${report.mobileScore}/100`, margin + 5, y + 17);
 
   // Desktop Score
-  const desktopColor = getScoreColor(report.desktopScore);
+  const desktopScoreValue = report.desktopScore ?? 0;
+  const desktopColor = getScoreColor(desktopScoreValue);
   const desktopRgb = desktopColor === 'red' ? [239, 68, 68] : desktopColor === 'amber' ? [245, 158, 11] : [16, 185, 129];
   const desktopX = margin + contentWidth / 2 + 5;
   doc.setFillColor(desktopRgb[0], desktopRgb[1], desktopRgb[2]);
@@ -98,7 +99,7 @@ export async function generatePDF(
   doc.text('Desktop', desktopX + 5, y + 7);
   doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
-  doc.text(`${report.desktopScore}/100`, desktopX + 5, y + 17);
+  doc.text(`${report.desktopScore !== null && report.desktopScore !== undefined ? report.desktopScore : 'N/A'}/100`, desktopX + 5, y + 17);
 
   y += 30;
 
@@ -107,7 +108,7 @@ export async function generatePDF(
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.text(
-    `Mobile performance is rated "${getScoreLabel(report.mobileScore)}". Desktop performance is rated "${getScoreLabel(report.desktopScore)}".`,
+    `Mobile performance is rated "${getScoreLabel(report.mobileScore)}". Desktop performance is rated "${report.desktopScore !== null && report.desktopScore !== undefined ? getScoreLabel(report.desktopScore) : 'N/A'}".`,
     margin,
     y
   );

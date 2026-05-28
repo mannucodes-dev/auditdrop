@@ -18,7 +18,7 @@ export interface Report {
   businessName: string;
   screenshotUrl: string;
   mobileScore: number;
-  desktopScore: number;
+  desktopScore: number | null;
   metrics: {
     fcp: string;
     lcp: string;
@@ -33,6 +33,42 @@ export interface Report {
     hasViewport: boolean | null;
     hasContactForm: boolean | null;
   };
+  seoChecks?: {
+    hasMetaTitle: boolean;
+    hasMetaDescription: boolean;
+    hasH1: boolean;
+    hasCanonical: boolean;
+    hasStructuredData: boolean;
+    hasOpenGraph: boolean;
+    titleLength: number;
+    titleTooLong: boolean;
+    titleTooShort: boolean;
+  };
+  competitors?: Array<{
+    url: string;
+    businessName: string;
+    mobileScore: number;
+    desktopScore: number | null;
+    checks: {
+      hasPhone: boolean | null;
+      hasClickToCall: boolean | null;
+      hasHttps: boolean | null;
+      hasAnalytics: boolean | null;
+      hasViewport: boolean | null;
+      hasContactForm: boolean | null;
+    };
+    seoChecks?: {
+      hasMetaTitle: boolean;
+      hasMetaDescription: boolean;
+      hasH1: boolean;
+      hasCanonical: boolean;
+      hasStructuredData: boolean;
+      hasOpenGraph: boolean;
+      titleLength: number;
+      titleTooLong: boolean;
+      titleTooShort: boolean;
+    };
+  }>;
   viewCount: number;
   lastViewedAt: Timestamp | null;
   createdAt: Timestamp;
