@@ -25,6 +25,65 @@ export interface OwnerProfile {
   ctaLabel: string;
 }
 
+/** Revenue impact estimate (Feature 1). */
+export interface RevenueImpact {
+  monthlyVisitorsEstimate: number;
+  conversionBaseline: number;
+  lostConversions: number;
+  lostRevenueMin: number;
+  lostRevenueMax: number;
+  currency: string;
+  severity: 'critical' | 'poor' | 'fair';
+  headline: string;
+  disclaimer: string;
+}
+
+/** Google Business Profile audit result (Feature 2). */
+export interface GBPAudit {
+  found: boolean;
+  rating: number | null;
+  reviewCount: number | null;
+  hasPhotos: boolean;
+  photoCount: number;
+  hasHours: boolean;
+  hasPhone: boolean;
+  hasWebsite: boolean;
+  hasDescription: boolean;
+  profileCompleteness: number;
+  reputationScore: number;
+  issues: GBPIssue[];
+}
+
+export interface GBPIssue {
+  title: string;
+  body: string;
+  impact: 'High' | 'Medium' | 'Low';
+}
+
+/** Business categories for revenue impact estimation. */
+export type BusinessCategory =
+  | 'dental'
+  | 'medical'
+  | 'restaurant'
+  | 'interior_design'
+  | 'photography'
+  | 'coaching'
+  | 'salon'
+  | 'retail'
+  | 'real_estate'
+  | 'general';
+
+/** Prospect pipeline status (Feature 3). */
+export type ProspectStatus = 'new' | 'contacted' | 'interested' | 'won' | 'lost';
+
+/** Private prospect data — stored in reports/{id}/private/data. */
+export interface ProspectData {
+  prospectStatus: ProspectStatus;
+  prospectNotes: string;
+  prospectPhone: string;
+  lastContactedAt: string | null;
+}
+
 /** Full report document stored in Firestore. */
 export interface Report {
   id: string;
@@ -32,7 +91,7 @@ export interface Report {
   url: string;
   businessName: string;
   screenshotUrl?: string;
-  mobileScore: number;
+  mobileScore: number | null;
   desktopScore: number | null;
   metrics: AuditMetrics;
   issues: AuditIssue[];
@@ -40,4 +99,6 @@ export interface Report {
   views: number;
   lastViewedAt: string | null;
   createdAt: string;
+  businessCategory?: BusinessCategory;
+  gbpAudit?: GBPAudit;
 }

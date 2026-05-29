@@ -5,9 +5,6 @@ import { useRouter } from 'next/navigation';
 import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useAuth } from '@/hooks/useAuth';
-import { Inter } from 'next/font/google';
-
-const inter = Inter({ subsets: ['latin'] });
 
 export default function LoginPage() {
   const { user, loading } = useAuth();
@@ -39,13 +36,13 @@ export default function LoginPage() {
 
   if (loading) {
     return (
-      <div className={`${inter.className} min-h-screen bg-slate-950 flex items-center justify-center`}>
+      <div className="min-h-screen bg-bg-primary flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="relative">
-            <div className="h-12 w-12 rounded-full border-2 border-violet-500/30 border-t-violet-500 animate-spin" />
-            <div className="absolute inset-0 h-12 w-12 rounded-full border-2 border-transparent border-b-violet-400/50 animate-spin [animation-duration:1.5s]" />
+            <div className="h-12 w-12 rounded-full border-2 border-brand-primary/30 border-t-brand-primary animate-spin" />
+            <div className="absolute inset-0 h-12 w-12 rounded-full border-2 border-transparent border-b-brand-secondary/50 animate-spin [animation-duration:1.5s]" />
           </div>
-          <span className="text-lg font-semibold bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent">
+          <span className="text-lg font-semibold text-brand-secondary">
             AuditDrop
           </span>
         </div>
@@ -58,11 +55,11 @@ export default function LoginPage() {
   }
 
   return (
-    <div className={`${inter.className} min-h-screen bg-slate-950 flex items-center justify-center px-4 relative overflow-hidden`}>
+    <div className="min-h-screen bg-bg-primary flex items-center justify-center px-4 relative overflow-hidden">
       {/* Background glow effects */}
-      <div className="absolute top-1/4 -left-32 w-96 h-96 bg-violet-600/10 rounded-full blur-[128px] pointer-events-none" />
-      <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-fuchsia-600/10 rounded-full blur-[128px] pointer-events-none" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-violet-500/5 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute top-1/4 -left-32 w-96 h-96 bg-brand-primary/10 rounded-full blur-[128px] pointer-events-none" />
+      <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-brand-secondary/10 rounded-full blur-[128px] pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-brand-primary/5 rounded-full blur-[100px] pointer-events-none" />
 
       {/* Grid pattern overlay */}
       <div
@@ -75,13 +72,13 @@ export default function LoginPage() {
       />
 
       {/* Login card */}
-      <div className="relative w-full max-w-md animate-[fadeInUp_0.6s_ease-out]">
-        <div className="absolute -inset-[1px] bg-gradient-to-b from-violet-500/20 via-violet-500/5 to-transparent rounded-2xl" />
+      <div className="relative w-full max-w-md animate-fade-in">
+        <div className="absolute -inset-[1px] bg-gradient-to-b from-brand-primary/20 via-brand-primary/5 to-transparent rounded-[var(--radius-xl)]" />
 
-        <div className="relative bg-slate-900/80 backdrop-blur-xl rounded-2xl border border-slate-700/50 p-8 sm:p-10 shadow-2xl shadow-violet-500/5">
+        <div className="relative bg-bg-secondary/80 backdrop-blur-xl rounded-[var(--radius-xl)] border border-bg-border p-8 sm:p-10 shadow-elevated">
           {/* Logo / Brand */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 mb-5 shadow-lg shadow-violet-500/25">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-[var(--radius-lg)] bg-brand-primary mb-5 shadow-glow">
               <svg
                 className="w-8 h-8 text-white"
                 fill="none"
@@ -97,13 +94,11 @@ export default function LoginPage() {
               </svg>
             </div>
 
-            <h1 className="text-3xl font-bold tracking-tight">
-              <span className="bg-gradient-to-r from-violet-400 via-fuchsia-400 to-violet-400 bg-clip-text text-transparent bg-[length:200%_auto] animate-[shimmer_3s_ease-in-out_infinite]">
-                AuditDrop
-              </span>
+            <h1 className="text-3xl font-bold tracking-tight text-brand-secondary">
+              AuditDrop
             </h1>
 
-            <p className="mt-3 text-slate-400 text-sm leading-relaxed max-w-xs mx-auto">
+            <p className="mt-3 text-text-secondary text-sm leading-relaxed max-w-xs mx-auto">
               Turn any business URL into a cold outreach weapon in 30&nbsp;seconds.
             </p>
           </div>
@@ -111,10 +106,10 @@ export default function LoginPage() {
           {/* Divider */}
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-700/50" />
+              <div className="w-full border-t border-bg-border" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="px-3 bg-slate-900/80 text-slate-500 tracking-wider">
+              <span className="px-3 bg-bg-secondary/80 text-text-muted tracking-wider">
                 Get started
               </span>
             </div>
@@ -122,7 +117,7 @@ export default function LoginPage() {
 
           {/* Error message */}
           {error && (
-            <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm text-center">
+            <div className="mb-4 p-3 rounded-[var(--radius-lg)] bg-status-critical-bg border border-status-critical/20 text-status-critical text-sm text-center">
               {error}
             </div>
           )}
@@ -131,10 +126,10 @@ export default function LoginPage() {
           <button
             onClick={handleGoogleSignIn}
             disabled={signingIn}
-            className="group relative w-full flex items-center justify-center gap-3 px-6 py-3.5 rounded-xl bg-white text-slate-900 font-semibold text-sm transition-all duration-200 hover:bg-slate-100 hover:shadow-lg hover:shadow-violet-500/10 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none"
+            className="group relative w-full flex items-center justify-center gap-3 px-6 py-3.5 rounded-[var(--radius-lg)] bg-white text-gray-900 font-semibold text-sm transition-all duration-200 hover:bg-gray-50 hover:shadow-lg hover:shadow-brand-primary/10 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none cursor-pointer"
           >
             {signingIn ? (
-              <div className="h-5 w-5 rounded-full border-2 border-slate-400 border-t-slate-700 animate-spin" />
+              <div className="h-5 w-5 rounded-full border-2 border-gray-400 border-t-gray-700 animate-spin" />
             ) : (
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path
@@ -159,41 +154,18 @@ export default function LoginPage() {
           </button>
 
           {/* Footer note */}
-          <p className="mt-6 text-center text-xs text-slate-500">
+          <p className="mt-6 text-center text-xs text-text-muted">
             By signing in, you agree to our{' '}
-            <span className="text-slate-400 hover:text-violet-400 cursor-pointer transition-colors">
+            <span className="text-text-secondary hover:text-brand-secondary cursor-pointer transition-colors">
               Terms of Service
             </span>{' '}
             and{' '}
-            <span className="text-slate-400 hover:text-violet-400 cursor-pointer transition-colors">
+            <span className="text-text-secondary hover:text-brand-secondary cursor-pointer transition-colors">
               Privacy Policy
             </span>
           </p>
         </div>
       </div>
-
-      {/* Keyframe animations via style tag */}
-      <style jsx global>{`
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(16px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        @keyframes shimmer {
-          0%,
-          100% {
-            background-position: 0% center;
-          }
-          50% {
-            background-position: 100% center;
-          }
-        }
-      `}</style>
     </div>
   );
 }

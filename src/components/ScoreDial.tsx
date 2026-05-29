@@ -1,130 +1,103 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef } from 'react';
 
 interface ScoreDialProps {
   score: number | null;
-  size?: 'sm' | 'md' | 'lg';
-  label?: string;
+  label: string;
+  size?: number;
 }
 
-const sizeMap = {
-  sm: { width: 100, stroke: 6, fontSize: 24, labelSize: 11 },
-  md: { width: 160, stroke: 8, fontSize: 40, labelSize: 14 },
-  lg: { width: 220, stroke: 10, fontSize: 56, labelSize: 16 },
-} as const;
+/**
+ * Animated circular score dial.
+ *
+ * Displays a 0–100 score with color-coded ring.
+ * Shows "N/A" with gray styling when score is null (failed audit).
+ */
+export default function ScoreDial({ score, label, size = 100 }: ScoreDialProps) {
+  const circleRef = useRef<SVGCircleElement>(null);
 
-function getScoreColor(score: number): {
-  stroke: string;
-  text: string;
-  glow: string;
-} {
-  if (score >= 90) {
-    return {
-      stroke: '#10B981', // emerald-500
-      text: 'text-emerald-500',
-      glow: 'drop-shadow(0 0 8px rgba(16,185,129,0.5))',
-    };
-  }
-  if (score >= 50) {
-    return {
-      stroke: '#F59E0B', // amber-500
-      text: 'text-amber-500',
-      glow: 'drop-shadow(0 0 8px rgba(245,158,11,0.5))',
-    };
-  }
-  return {
-    stroke: '#EF4444', // red-500
-    text: 'text-red-500',
-    glow: 'drop-shadow(0 0 8px rgba(239,68,68,0.5))',
-  };
-}
-
-export default function ScoreDial({
-  score,
-  size = 'md',
-  label,
-}: ScoreDialProps) {
-  const [mounted, setMounted] = useState(false);
-  const dims = sizeMap[size];
-  const radius = (dims.width - dims.stroke) / 2;
+  const radius = 40;
   const circumference = 2 * Math.PI * radius;
-  const isNull = score === null || score === undefined;
-  const clampedScore = isNull ? 0 : Math.max(0, Math.min(100, Math.round(score)));
-  const offset = circumference - (clampedScore / 100) * circumference;
-  const color = isNull
-    ? { stroke: '#475569', text: 'text-slate-500', glow: 'none' }
-    : getScoreColor(clampedScore);
-  const center = dims.width / 2;
+
+  // Calculate the stroke offset for the score
+  const percentage = score !== null ? Math.min(Math.max(score, 0), 100) : 0;
+  const offset = circumference - (percentage / 100) * circumference;
+
+  // Color based on score
+  const getColor = (): string => {
+    if (score === null) return 'var(--color-text-muted)';
+    if (score >= 90) return 'var(--color-status-excellent)';
+    if (score >= 75) return 'var(--color-status-good)';
+    if (score >= 50) return 'var(--color-status-warning)';
+    return 'var(--color-status-critical)';
+  };
+
+  const getTextColorClass = (): string => {
+    if (score === null) return 'text-text-muted';
+    if (score >= 90) return 'text-status-excellent';
+    if (score >= 75) return 'text-status-good';
+    if (score >= 50) return 'text-status-warning';
+    return 'text-status-critical';
+  };
 
   useEffect(() => {
-    // Small delay so the CSS transition animates from 0
-    const timer = setTimeout(() => setMounted(true), 50);
-    return () => clearTimeout(timer);
-  }, []);
+    if (circleRef.current && score !== null) {
+      // Start from full offset (empty) and animate to target
+      circleRef.current.style.strokeDashoffset = String(circumference);
+      requestAnimationFrame(() => {
+        if (circleRef.current) {
+          circleRef.current.style.transition = 'stroke-dashoffset 1.2s ease-out';
+          circleRef.current.style.strokeDashoffset = String(offset);
+        }
+      });
+    }
+  }, [score, offset, circumference]);
 
   return (
-    <div className="flex flex-col items-center gap-1.5" role="figure" aria-label={`${label ? label + ' ' : ''}score: ${isNull ? 'N/A' : clampedScore + ' out of 100'}`}>
-      <svg
-        width={dims.width}
-        height={dims.width}
-        viewBox={`0 0 ${dims.width} ${dims.width}`}
-        className="transform -rotate-90"
-        style={{ filter: mounted && !isNull ? color.glow : 'none' }}
-      >
-        {/* Background track */}
-        <circle
-          cx={center}
-          cy={center}
-          r={radius}
-          fill="none"
-          stroke="#1e293b" // slate-800
-          strokeWidth={dims.stroke}
-        />
-        {/* Score arc */}
-        {!isNull && (
+    <div className="flex flex-col items-center gap-2">
+      <div className="relative" style={{ width: size, height: size }}>
+        <svg
+          width={size}
+          height={size}
+          viewBox="0 0 100 100"
+          className="-rotate-90"
+        >
+          {/* Background circle */}
           <circle
-            cx={center}
-            cy={center}
+            cx="50"
+            cy="50"
             r={radius}
             fill="none"
-            stroke={color.stroke}
-            strokeWidth={dims.stroke}
-            strokeLinecap="round"
-            strokeDasharray={circumference}
-            strokeDashoffset={mounted ? offset : circumference}
-            style={{
-              transition: 'stroke-dashoffset 1.2s cubic-bezier(0.4, 0, 0.2, 1)',
-            }}
+            stroke="var(--color-bg-border)"
+            strokeWidth="6"
           />
-        )}
-      </svg>
-
-      {/* Score number overlaid in the center */}
-      <div
-        className="absolute flex items-center justify-center"
-        style={{
-          width: dims.width,
-          height: dims.width,
-          marginTop: 0,
-        }}
-      >
-        <span
-          className={`font-bold tabular-nums ${color.text}`}
-          style={{ fontSize: isNull ? dims.fontSize * 0.5 : dims.fontSize }}
-        >
-          {isNull ? 'N/A' : clampedScore}
-        </span>
+          {/* Score arc */}
+          {score !== null && (
+            <circle
+              ref={circleRef}
+              cx="50"
+              cy="50"
+              r={radius}
+              fill="none"
+              stroke={getColor()}
+              strokeWidth="6"
+              strokeLinecap="round"
+              strokeDasharray={circumference}
+              strokeDashoffset={circumference}
+            />
+          )}
+        </svg>
+        {/* Score text */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className={`text-2xl font-bold ${getTextColorClass()}`}>
+            {score !== null ? score : 'N/A'}
+          </span>
+        </div>
       </div>
-
-      {label && (
-        <span
-          className="text-slate-400 font-medium tracking-wide uppercase"
-          style={{ fontSize: dims.labelSize }}
-        >
-          {label}
-        </span>
-      )}
+      <span className="text-xs font-medium text-text-muted uppercase tracking-wider">
+        {label}
+      </span>
     </div>
   );
 }

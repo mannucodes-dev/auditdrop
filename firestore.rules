@@ -10,7 +10,7 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    // Reports collection
+    // Reports collection — public read (scores, checks, CTA)
     match /reports/{reportId} {
       // Anyone can view a report (public outreach sharing)
       allow read: if true;
@@ -18,6 +18,12 @@ service cloud.firestore {
       // Users can write/delete their own reports from the dashboard
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
       allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+
+      // Private sub-collection — owner-only read/write (phone, notes, status)
+      // This prevents prospect data from being readable by anyone with the report URL
+      match /private/{docId} {
+        allow read, write: if isAuthenticated() && get(/databases/$(database)/documents/reports/$(reportId)).data.userId == request.auth.uid;
+      }
     }
 
     // Users settings collection
@@ -26,8 +32,13 @@ service cloud.firestore {
       allow read, write: if isOwner(userId);
     }
 
-    // ReportViews collection (typically written by server admin SDK, blocked on client)
+    // ReportViews collection (server-side only via admin SDK)
     match /reportViews/{viewId} {
+      allow read, write: if false;
+    }
+
+    // Public audit counters (server-side only via admin SDK)
+    match /publicAuditCounts/{userId}/{document=**} {
       allow read, write: if false;
     }
   }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { safeError } from '@/lib/apiError';
 
 export async function GET(
   request: NextRequest,
@@ -45,17 +46,25 @@ export async function GET(
       console.error('Failed to record view event:', err);
     });
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       id: reportId,
       ...reportData,
       // Convert Firestore Timestamps to ISO strings for JSON serialization
       createdAt: reportData?.createdAt?.toDate?.()?.toISOString() || null,
       lastViewedAt: reportData?.lastViewedAt?.toDate?.()?.toISOString() || null,
     });
+
+    // Cache at CDN level — report data doesn't change frequently
+    response.headers.set(
+      'Cache-Control',
+      'public, s-maxage=60, stale-while-revalidate=300'
+    );
+
+    return response;
   } catch (error) {
     console.error('View recording error:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch report' },
+      { error: safeError(error) },
       { status: 500 }
     );
   }

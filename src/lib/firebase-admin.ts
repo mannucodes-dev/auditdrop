@@ -7,6 +7,7 @@ import {
 } from 'firebase-admin/app';
 import { getFirestore, type Firestore } from 'firebase-admin/firestore';
 import { getAuth, type Auth } from 'firebase-admin/auth';
+import { validateEnv } from './env';
 
 let adminAppInstance: App | null = null;
 let dbInstance: Firestore | null = null;
@@ -20,6 +21,9 @@ function getAdminApp(): App {
     adminAppInstance = existingApps[0];
     return adminAppInstance;
   }
+
+  // Validate all required env vars before proceeding
+  validateEnv();
 
   const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID;
   const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;

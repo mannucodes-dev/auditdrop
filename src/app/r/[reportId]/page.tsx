@@ -19,14 +19,16 @@ async function getReportData(reportId: string) {
     businessName: data?.businessName || 'Unknown',
     businessUrl: data?.businessUrl || '',
     screenshotUrl: data?.screenshotUrl || '',
-    mobileScore: data?.mobileScore || 0,
+    mobileScore: data?.mobileScore ?? null,
     desktopScore: data?.desktopScore ?? null,
-    metrics: data?.metrics || { fcp: 'N/A', lcp: 'N/A', tbt: 'N/A', cls: 'N/A' },
+    metrics: data?.metrics || { fcp: '—', lcp: '—', tbt: '—', cls: '—' },
     checks: data?.checks || {},
     seoChecks: data?.seoChecks || undefined,
     competitors: data?.competitors || undefined,
     viewCount: data?.viewCount || 0,
     userId: data?.userId || '',
+    businessCategory: data?.businessCategory || 'general',
+    gbpAudit: data?.gbpAudit || undefined,
   };
 }
 
@@ -54,20 +56,22 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   const issues = generateIssues(report.checks, report.metrics, report.mobileScore);
+  const mobileLabel = report.mobileScore !== null ? `${report.mobileScore}/100` : 'N/A';
+  const desktopLabel = report.desktopScore !== null ? `${report.desktopScore}/100` : 'N/A';
 
   return {
     title: `${report.businessName} - Website Audit Report`,
-    description: `Mobile score: ${report.mobileScore}/100. ${issues.length} issues found. See the full audit report.`,
+    description: `Mobile score: ${mobileLabel}. ${issues.length} issues found. See the full audit report.`,
     openGraph: {
       title: `${report.businessName} - Website Audit Report`,
-      description: `Mobile performance score: ${report.mobileScore}/100. Desktop: ${report.desktopScore}/100. ${issues.length} issues found.`,
+      description: `Mobile performance score: ${mobileLabel}. Desktop: ${desktopLabel}. ${issues.length} issues found.`,
       type: 'website',
       siteName: 'AuditDrop',
     },
     twitter: {
       card: 'summary_large_image',
       title: `${report.businessName} - Website Audit Report`,
-      description: `Mobile score: ${report.mobileScore}/100. ${issues.length} issues found.`,
+      description: `Mobile score: ${mobileLabel}. ${issues.length} issues found.`,
     },
   };
 }
@@ -80,7 +84,7 @@ export default async function PublicReportPage({ params }: PageProps) {
     notFound();
   }
 
-  // Record view event (fire-and-forget)
+  // Record view event (fire-and-forget — don't block page render)
   try {
     await Promise.all([
       adminDb.collection('reportViews').add({
@@ -98,7 +102,7 @@ export default async function PublicReportPage({ params }: PageProps) {
     console.error('Failed to record view:', err);
   }
 
-  // Get owner profile for CTA
+  // Get owner profile for CTA — NEVER fetches private sub-collection
   const ownerProfile = await getOwnerProfile(report.userId);
 
   return (

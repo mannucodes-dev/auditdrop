@@ -1,57 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebase-admin';
 import { runAudit } from '@/lib/psi';
-import { runCustomChecks } from '@/lib/scraper';
+import { runCustomChecks, extractBusinessName } from '@/lib/scraper';
 import { generateReportId } from '@/lib/reportUtils';
+import { auditSchema, sanitizeZodError } from '@/lib/validation';
+import { safeError } from '@/lib/apiError';
+import { checkRateLimit } from '@/lib/rateLimit';
 
 export const maxDuration = 120;
-
-function decodeHtmlEntities(str: string): string {
-  return str
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#x27;/g, "'")
-    .replace(/&#8211;/g, '–')
-    .replace(/&#8212;/g, '—')
-    .replace(/&ndash;/g, '–')
-    .replace(/&mdash;/g, '—')
-    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(Number(dec)));
-}
-
-async function extractBusinessName(url: string): Promise<string> {
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
-
-    const response = await fetch(url, {
-      signal: controller.signal,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; AuditDropBot/1.0)',
-      },
-    });
-    clearTimeout(timeout);
-
-    const html = await response.text();
-    const titleMatch = html.match(/<title[^>]*>([^<]*)<\/title>/i);
-
-    if (titleMatch?.[1]) {
-      let title = decodeHtmlEntities(titleMatch[1].trim());
-      title = title.replace(/\s*[-|–—]\s*(Home|Homepage|Welcome).*$/i, '');
-      title = title.replace(/\s*[-|–—]\s*$/, '');
-      return title.substring(0, 100) || new URL(url).hostname;
-    }
-
-    return new URL(url).hostname;
-  } catch {
-    try {
-      return new URL(url).hostname;
-    } catch {
-      return 'Unknown';
-    }
-  }
-}
 
 function generateScreenshotUrl(url: string): string {
   const apiKey = process.env.SCREENSHOTONE_API_KEY;
@@ -64,7 +20,7 @@ function generateScreenshotUrl(url: string): string {
 
 export async function POST(request: NextRequest) {
   try {
-    // Verify auth
+    // ── Auth ─────────────────────────────────────────────────
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json(
@@ -77,8 +33,7 @@ export async function POST(request: NextRequest) {
     let decodedToken;
     try {
       decodedToken = await adminAuth.verifyIdToken(token);
-    } catch (err) {
-      console.error('Token verification failed:', err);
+    } catch {
       return NextResponse.json(
         { error: 'Invalid or expired authentication token.' },
         { status: 401 }
@@ -87,40 +42,51 @@ export async function POST(request: NextRequest) {
 
     const userId = decodedToken.uid;
 
-    // Parse body
-    const body = await request.json();
-    let { url } = body;
-    const competitorUrls: string[] = Array.isArray(body.competitors)
-      ? body.competitors.filter((c: unknown) => typeof c === 'string' && c.trim()).slice(0, 2)
-      : [];
+    // ── Rate Limit ──────────────────────────────────────────
+    const rateLimit = checkRateLimit(
+      `audit:${userId}`,
+      10,                      // 10 audits
+      60 * 60 * 1000           // per hour
+    );
 
-    if (!url || typeof url !== 'string') {
+    if (!rateLimit.allowed) {
+      const retryAfterSec = Math.ceil(rateLimit.retryAfterMs / 1000);
       return NextResponse.json(
-        { error: 'Please provide a valid URL.' },
+        { error: 'Rate limit exceeded. Try again in 1 hour.' },
+        {
+          status: 429,
+          headers: { 'Retry-After': String(retryAfterSec) },
+        }
+      );
+    }
+
+    // ── Input Validation ────────────────────────────────────
+    const body = await request.json();
+    const parsed = auditSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: sanitizeZodError(parsed.error) },
         { status: 400 }
       );
     }
 
-    // Normalize URL
+    let { url } = parsed.data;
+    const competitorUrls = parsed.data.competitors || [];
+    const businessNameOverride = parsed.data.businessName;
+    const city = parsed.data.city;
+
+    // ── URL Normalization ───────────────────────────────────
     url = url.trim();
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
       url = 'https://' + url;
-    }
-
-    // Validate URL format
-    try {
-      new URL(url);
-    } catch {
-      return NextResponse.json(
-        { error: 'Invalid URL format. Please check and try again.' },
-        { status: 400 }
-      );
     }
 
     // Normalize competitor URLs
     const normalizedCompetitors: string[] = [];
     for (const cUrl of competitorUrls) {
       let normalized = cUrl.trim();
+      if (!normalized) continue;
       if (!normalized.startsWith('http://') && !normalized.startsWith('https://')) {
         normalized = 'https://' + normalized;
       }
@@ -132,7 +98,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Run all tasks in parallel
+    // ── Run Audit ───────────────────────────────────────────
     const [auditResult, scraperResult, businessName] = await Promise.all([
       runAudit(url),
       runCustomChecks(url),
@@ -142,7 +108,10 @@ export async function POST(request: NextRequest) {
     const screenshotUrl = generateScreenshotUrl(url);
     const reportId = generateReportId();
 
-    // Run competitor audits in parallel (if any)
+    // Use override name if provided, otherwise use auto-detected
+    const finalBusinessName = businessNameOverride?.trim() || businessName;
+
+    // ── Competitor Audits (parallel) ────────────────────────
     const competitors = await Promise.all(
       normalizedCompetitors.map(async (compUrl) => {
         try {
@@ -166,16 +135,16 @@ export async function POST(request: NextRequest) {
       })
     );
 
-    // Filter out failed competitor audits
     const validCompetitors = competitors.filter(
       (c): c is NonNullable<typeof c> => c !== null
     );
 
-    // Save to Firestore
+    // ── Save to Firestore ───────────────────────────────────
     const reportData: Record<string, unknown> = {
       userId,
       businessUrl: url,
-      businessName,
+      businessName: finalBusinessName,
+      businessCategory: scraperResult.businessCategory || 'general',
       screenshotUrl,
       mobileScore: auditResult.mobileScore,
       desktopScore: auditResult.desktopScore,
@@ -191,21 +160,36 @@ export async function POST(request: NextRequest) {
       reportData.competitors = validCompetitors;
     }
 
+    // Store city for GBP lookup context
+    if (city) {
+      reportData.city = city;
+    }
+
     await adminDb.collection('reports').doc(reportId).set(reportData);
+
+    // ── Initialize prospect private sub-collection ──────────
+    await adminDb
+      .collection('reports')
+      .doc(reportId)
+      .collection('private')
+      .doc('data')
+      .set({
+        prospectStatus: 'new',
+        prospectNotes: '',
+        prospectPhone: '',
+        lastContactedAt: null,
+      });
 
     return NextResponse.json({
       reportId,
-      businessName,
+      businessName: finalBusinessName,
       mobileScore: auditResult.mobileScore,
       desktopScore: auditResult.desktopScore,
     });
   } catch (error) {
     console.error('Audit error:', error);
-    const message =
-      error instanceof Error ? error.message : 'An unexpected error occurred';
-
     return NextResponse.json(
-      { error: `Audit failed: ${message}` },
+      { error: safeError(error) },
       { status: 500 }
     );
   }

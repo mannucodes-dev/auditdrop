@@ -1,5 +1,6 @@
-import type { CustomChecks, SEOChecks } from './scraper';
+import type { CustomChecks, SEOChecks, BusinessCategory } from './scraper';
 import type { PSIMetrics } from './psi';
+import type { RevenueImpact } from './types';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -26,6 +27,146 @@ export interface Verdict {
 
 type ScoreColor = 'red' | 'amber' | 'green';
 type ScoreLabel = 'Poor' | 'Needs Work' | 'Good';
+
+// ---------------------------------------------------------------------------
+// Revenue Impact Engine — Category-aware ₹ estimation
+// ---------------------------------------------------------------------------
+
+/** Monthly visitor estimates by business category (conservative for Indian SMBs). */
+const MONTHLY_VISITORS: Record<BusinessCategory, number> = {
+  dental: 800,
+  medical: 1200,
+  restaurant: 1500,
+  interior_design: 600,
+  photography: 500,
+  coaching: 1000,
+  salon: 700,
+  retail: 2000,
+  real_estate: 900,
+  general: 500,
+};
+
+/** Average lead value in ₹ by category. */
+const LEAD_VALUE: Record<BusinessCategory, number> = {
+  dental: 3000,
+  medical: 2500,
+  restaurant: 500,
+  interior_design: 15000,
+  photography: 8000,
+  coaching: 5000,
+  salon: 1500,
+  retail: 1000,
+  real_estate: 50000,
+  general: 2000,
+};
+
+/** Baseline conversion rate for a well-optimized site. */
+const CONVERSION_BASELINE = 0.03; // 3%
+
+/**
+ * Calculates estimated monthly revenue loss based on audit issues.
+ *
+ * Uses category-specific visitor and lead-value estimates to produce
+ * a ₹ range that resonates with Indian SMB owners.
+ */
+export function calculateRevenueImpact(
+  mobileScore: number | null,
+  desktopScore: number | null,
+  checks: CustomChecks,
+  seoChecks: SEOChecks | undefined,
+  businessCategory: BusinessCategory = 'general'
+): RevenueImpact {
+  const visitors = MONTHLY_VISITORS[businessCategory];
+  const leadValue = LEAD_VALUE[businessCategory];
+
+  // Calculate conversion loss percentage from issues
+  let lossPct = 0;
+
+  // Mobile speed impact
+  const effectiveMobileScore = mobileScore ?? 30; // assume bad if unavailable
+  if (effectiveMobileScore < 50) {
+    lossPct += 35;
+  } else if (effectiveMobileScore < 70) {
+    lossPct += 20;
+  } else if (effectiveMobileScore < 90) {
+    lossPct += 5;
+  }
+
+  // Desktop speed impact (lower weight than mobile)
+  const effectiveDesktopScore = desktopScore ?? 50;
+  if (effectiveDesktopScore < 50) {
+    lossPct += 10;
+  } else if (effectiveDesktopScore < 70) {
+    lossPct += 5;
+  }
+
+  // Functional issues
+  if (checks.hasClickToCall === false) lossPct += 15;
+  if (checks.hasContactForm === false) lossPct += 10;
+  if (checks.hasViewport === false) lossPct += 25;
+  if (checks.hasHttps === false) lossPct += 20;
+
+  // SEO issues (moderate impact)
+  if (seoChecks) {
+    if (!seoChecks.hasMetaDescription) lossPct += 5;
+    if (!seoChecks.hasH1) lossPct += 5;
+    if (!seoChecks.hasStructuredData) lossPct += 3;
+  }
+
+  // Cap at 80%
+  lossPct = Math.min(lossPct, 80);
+
+  // Calculate lost conversions and revenue
+  const lostConversions = Math.round(visitors * CONVERSION_BASELINE * (lossPct / 100));
+  const baseLostRevenue = lostConversions * leadValue;
+  const lostRevenueMin = roundToNearest(baseLostRevenue * 0.8, 500);
+  const lostRevenueMax = roundToNearest(baseLostRevenue * 1.2, 500);
+
+  // Determine severity and headline
+  let severity: 'critical' | 'poor' | 'fair';
+  let headline: string;
+
+  if (lossPct > 50) {
+    severity = 'critical';
+    headline = `This website is losing ₹${formatINR(lostRevenueMin)}–₹${formatINR(lostRevenueMax)} every month`;
+  } else if (lossPct >= 30) {
+    severity = 'poor';
+    headline = `This website is leaking ₹${formatINR(lostRevenueMin)}–₹${formatINR(lostRevenueMax)}/month in lost business`;
+  } else {
+    severity = 'fair';
+    headline = `Fixing these issues could recover ₹${formatINR(lostRevenueMin)}–₹${formatINR(lostRevenueMax)}/month`;
+  }
+
+  return {
+    monthlyVisitorsEstimate: visitors,
+    conversionBaseline: CONVERSION_BASELINE,
+    lostConversions,
+    lostRevenueMin,
+    lostRevenueMax,
+    currency: '₹',
+    severity,
+    headline,
+    disclaimer:
+      'Estimates based on industry averages for similar businesses. Actual results depend on location, competition, and service quality.',
+  };
+}
+
+/** Format number in Indian numbering system (1,00,000). */
+function formatINR(num: number): string {
+  if (num >= 10000000) {
+    return (num / 10000000).toFixed(1).replace(/\.0$/, '') + ' Cr';
+  }
+  if (num >= 100000) {
+    return (num / 100000).toFixed(1).replace(/\.0$/, '') + ' L';
+  }
+  // Indian grouping: last 3 digits then groups of 2
+  const str = Math.round(num).toString();
+  if (str.length <= 3) return str;
+  const last3 = str.slice(-3);
+  const rest = str.slice(0, -3);
+  const grouped = rest.replace(/\B(?=(\d{2})+(?!\d))/g, ',');
+  return grouped + ',' + last3;
+}
 
 // ---------------------------------------------------------------------------
 // Plain-language issue copy — written for non-technical business owners
@@ -157,7 +298,8 @@ export const ISSUE_COPY = {
  * - 50–89 → amber
  * - 90–100 → green
  */
-export function getScoreColor(score: number): ScoreColor {
+export function getScoreColor(score: number | null): ScoreColor {
+  if (score === null) return 'red';
   if (score >= 90) return 'green';
   if (score >= 50) return 'amber';
   return 'red';
@@ -166,7 +308,8 @@ export function getScoreColor(score: number): ScoreColor {
 /**
  * Human-readable label for a 0-100 performance score.
  */
-export function getScoreLabel(score: number): ScoreLabel {
+export function getScoreLabel(score: number | null): ScoreLabel {
+  if (score === null) return 'Poor';
   if (score >= 90) return 'Good';
   if (score >= 50) return 'Needs Work';
   return 'Poor';
@@ -184,10 +327,6 @@ export function generateReportId(): string {
   return id;
 }
 
-// ---------------------------------------------------------------------------
-// Verdict generator (Feature 1)
-// ---------------------------------------------------------------------------
-
 /**
  * Rounds a number to the nearest multiple of `step`.
  */
@@ -195,21 +334,26 @@ function roundToNearest(value: number, step: number): number {
   return Math.round(value / step) * step;
 }
 
+// ---------------------------------------------------------------------------
+// Verdict generator (legacy — kept for backwards compatibility)
+// ---------------------------------------------------------------------------
+
 /**
  * Generates a plain-English verdict estimating lost leads based on audit data.
- * Uses a base monthly estimate of 100 leads (configurable later).
  */
 export function generateVerdict(
-  mobileScore: number,
+  mobileScore: number | null,
   checks: CustomChecks
 ): Verdict {
   const BASE_LEADS = 100;
   let lossPercentage = 0;
 
+  const effectiveScore = mobileScore ?? 30;
+
   // Mobile speed
-  if (mobileScore < 50) {
+  if (effectiveScore < 50) {
     lossPercentage += 35;
-  } else if (mobileScore < 70) {
+  } else if (effectiveScore < 70) {
     lossPercentage += 20;
   }
 
@@ -267,14 +411,15 @@ export function generateVerdict(
 export function generateIssues(
   checks: CustomChecks,
   metrics: PSIMetrics,
-  mobileScore: number,
+  mobileScore: number | null,
   seoChecks?: SEOChecks
 ): Issue[] {
   const issues: Issue[] = [];
+  const effectiveScore = mobileScore ?? 0;
 
   // Slow load — triggered when mobile score is below 50 OR LCP > 4 s
   const lcpSeconds = parseLcpSeconds(metrics.lcp);
-  if (mobileScore < 50 || (lcpSeconds !== null && lcpSeconds > 4)) {
+  if (effectiveScore < 50 || (lcpSeconds !== null && lcpSeconds > 4)) {
     issues.push({
       key: 'slowLoad',
       title: ISSUE_COPY.slowLoad.title,
@@ -363,7 +508,7 @@ export function generateIssues(
     });
   }
 
-  // SEO Issues (Feature 2)
+  // SEO Issues
   if (seoChecks) {
     if (!seoChecks.hasMetaDescription) {
       issues.push({

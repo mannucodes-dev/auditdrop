@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, type FormEvent } from 'react';
 import { auth } from '@/lib/firebase';
+import { authFetch } from '@/lib/authFetch';
 
 interface AuditFormProps {
   onSuccess: (reportId: string) => void;
@@ -31,9 +32,12 @@ function isValidUrl(url: string): boolean {
 
 export default function AuditForm({ onSuccess }: AuditFormProps) {
   const [url, setUrl] = useState('');
+  const [businessName, setBusinessName] = useState('');
+  const [city, setCity] = useState('Bangalore');
   const [competitor1, setCompetitor1] = useState('');
   const [competitor2, setCompetitor2] = useState('');
   const [showCompetitors, setShowCompetitors] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [statusIdx, setStatusIdx] = useState(0);
@@ -62,9 +66,7 @@ export default function AuditForm({ onSuccess }: AuditFormProps) {
       setStatusIdx(0);
 
       try {
-        // Wait for Firebase auth to fully initialise before reading the user.
-        // auth.currentUser can be null if the component mounts before the SDK
-        // has rehydrated the session — onAuthStateChanged is the safe way to wait.
+        // Wait for Firebase auth to fully initialise
         const user = await new Promise<import('firebase/auth').User | null>(
           (resolve) => {
             const unsubscribe = auth.onAuthStateChanged((u) => {
@@ -78,23 +80,23 @@ export default function AuditForm({ onSuccess }: AuditFormProps) {
           throw new Error('You must be signed in to run an audit.');
         }
 
-        // Force-refresh=true ensures we never send an expired token
-        const token = await user.getIdToken(true);
-
-        const res = await fetch('/api/audit', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
+        // Use authFetch for automatic token refresh
+        const res = await authFetch(
+          '/api/audit',
+          {
+            method: 'POST',
+            body: JSON.stringify({
+              url: normalized,
+              businessName: businessName.trim() || undefined,
+              city: city.trim() || undefined,
+              competitors: [competitor1, competitor2]
+                .map((c) => c.trim())
+                .filter(Boolean)
+                .map((c) => normalizeUrl(c)),
+            }),
           },
-          body: JSON.stringify({
-            url: normalized,
-            competitors: [competitor1, competitor2]
-              .map((c) => c.trim())
-              .filter(Boolean)
-              .map((c) => normalizeUrl(c)),
-          }),
-        });
+          user
+        );
 
         if (!res.ok) {
           const data = await res.json().catch(() => null);
@@ -113,7 +115,7 @@ export default function AuditForm({ onSuccess }: AuditFormProps) {
         setLoading(false);
       }
     },
-    [url, competitor1, competitor2, onSuccess]
+    [url, businessName, city, competitor1, competitor2, onSuccess]
   );
 
   return (
@@ -133,21 +135,20 @@ export default function AuditForm({ onSuccess }: AuditFormProps) {
               disabled={loading}
               aria-label="Website URL"
               className={`
-                w-full rounded-xl border bg-slate-900 px-5 py-4
-                text-white placeholder:text-slate-500
+                w-full rounded-[var(--radius-lg)] border bg-bg-tertiary px-5 py-4
+                text-text-primary placeholder:text-text-muted
                 text-base font-medium
                 outline-none transition-all duration-200
                 disabled:opacity-50 disabled:cursor-not-allowed
                 ${
                   error
-                    ? 'border-red-500/60 focus:ring-red-500/30'
-                    : 'border-slate-700 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20'
+                    ? 'border-status-critical/60 focus:ring-status-critical/30'
+                    : 'border-bg-border focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20'
                 }
               `}
             />
-            {/* Pulsing glow when loading */}
             {loading && (
-              <div className="absolute inset-0 rounded-xl border-2 border-violet-500/40 animate-pulse pointer-events-none" />
+              <div className="absolute inset-0 rounded-[var(--radius-lg)] border-2 border-brand-primary/40 animate-pulse pointer-events-none" />
             )}
           </div>
 
@@ -155,14 +156,14 @@ export default function AuditForm({ onSuccess }: AuditFormProps) {
             type="submit"
             disabled={loading || !url.trim()}
             className={`
-              relative overflow-hidden rounded-xl px-8 py-4
+              relative overflow-hidden rounded-[var(--radius-lg)] px-8 py-4
               font-semibold text-white text-base
-              bg-linear-to-r from-violet-600 to-violet-500
+              bg-brand-primary hover:bg-brand-primary-hover
               transition-all duration-200
-              hover:from-violet-500 hover:to-violet-400
-              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950
+              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary
               disabled:opacity-50 disabled:cursor-not-allowed
               shrink-0 cursor-pointer
+              shadow-glow
             `}
           >
             {loading ? (
@@ -194,12 +195,58 @@ export default function AuditForm({ onSuccess }: AuditFormProps) {
           </button>
         </div>
 
+        {/* Advanced Options (Business Name + City for GBP) */}
+        <div className="border border-bg-border rounded-[var(--radius-lg)] overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className="w-full flex items-center justify-between px-4 py-3 text-sm text-text-secondary hover:text-text-primary hover:bg-bg-tertiary transition-colors cursor-pointer"
+          >
+            <span className="flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              Google Business Profile lookup (optional)
+            </span>
+            <svg
+              className={`w-4 h-4 transition-transform duration-200 ${showAdvanced ? 'rotate-180' : ''}`}
+              fill="none" stroke="currentColor" viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          {showAdvanced && (
+            <div className="px-4 pb-4 space-y-3 border-t border-bg-border">
+              <p className="text-xs text-text-muted mt-3">Enter business name and city to check their Google Business Profile.</p>
+              <input
+                type="text"
+                value={businessName}
+                onChange={(e) => setBusinessName(e.target.value)}
+                placeholder="Business name (auto-detected if empty)"
+                disabled={loading}
+                aria-label="Business name"
+                className="w-full rounded-[var(--radius-md)] border border-bg-border bg-bg-tertiary px-4 py-3 text-text-primary placeholder:text-text-muted text-sm outline-none transition-all duration-200 focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
+              />
+              <input
+                type="text"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="City (default: Bangalore)"
+                disabled={loading}
+                aria-label="City"
+                className="w-full rounded-[var(--radius-md)] border border-bg-border bg-bg-tertiary px-4 py-3 text-text-primary placeholder:text-text-muted text-sm outline-none transition-all duration-200 focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
+              />
+            </div>
+          )}
+        </div>
+
         {/* Competitor Comparison (optional) */}
-        <div className="border border-slate-800 rounded-xl overflow-hidden">
+        <div className="border border-bg-border rounded-[var(--radius-lg)] overflow-hidden">
           <button
             type="button"
             onClick={() => setShowCompetitors(!showCompetitors)}
-            className="w-full flex items-center justify-between px-4 py-3 text-sm text-slate-400 hover:text-slate-300 hover:bg-slate-900/40 transition-colors cursor-pointer"
+            className="w-full flex items-center justify-between px-4 py-3 text-sm text-text-secondary hover:text-text-primary hover:bg-bg-tertiary transition-colors cursor-pointer"
           >
             <span className="flex items-center gap-2">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -215,30 +262,26 @@ export default function AuditForm({ onSuccess }: AuditFormProps) {
             </svg>
           </button>
           {showCompetitors && (
-            <div className="px-4 pb-4 space-y-3 border-t border-slate-800">
-              <p className="text-xs text-slate-500 mt-3">Add up to 2 competitor URLs to see how you stack up.</p>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={competitor1}
-                  onChange={(e) => setCompetitor1(e.target.value)}
-                  placeholder="Competitor 1 URL…"
-                  disabled={loading}
-                  aria-label="Competitor 1 URL"
-                  className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white placeholder:text-slate-500 text-sm outline-none transition-all duration-200 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                />
-              </div>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={competitor2}
-                  onChange={(e) => setCompetitor2(e.target.value)}
-                  placeholder="Competitor 2 URL…"
-                  disabled={loading}
-                  aria-label="Competitor 2 URL"
-                  className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white placeholder:text-slate-500 text-sm outline-none transition-all duration-200 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                />
-              </div>
+            <div className="px-4 pb-4 space-y-3 border-t border-bg-border">
+              <p className="text-xs text-text-muted mt-3">Add up to 2 competitor URLs to see how you stack up.</p>
+              <input
+                type="text"
+                value={competitor1}
+                onChange={(e) => setCompetitor1(e.target.value)}
+                placeholder="Competitor 1 URL…"
+                disabled={loading}
+                aria-label="Competitor 1 URL"
+                className="w-full rounded-[var(--radius-md)] border border-bg-border bg-bg-tertiary px-4 py-3 text-text-primary placeholder:text-text-muted text-sm outline-none transition-all duration-200 focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
+              />
+              <input
+                type="text"
+                value={competitor2}
+                onChange={(e) => setCompetitor2(e.target.value)}
+                placeholder="Competitor 2 URL…"
+                disabled={loading}
+                aria-label="Competitor 2 URL"
+                className="w-full rounded-[var(--radius-md)] border border-bg-border bg-bg-tertiary px-4 py-3 text-text-primary placeholder:text-text-muted text-sm outline-none transition-all duration-200 focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
+              />
             </div>
           )}
         </div>
@@ -247,12 +290,12 @@ export default function AuditForm({ onSuccess }: AuditFormProps) {
         {loading && (
           <div className="flex items-center justify-center gap-2 py-3">
             <div className="flex gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-violet-500 animate-bounce [animation-delay:0ms]" />
-              <span className="h-1.5 w-1.5 rounded-full bg-violet-500 animate-bounce [animation-delay:150ms]" />
-              <span className="h-1.5 w-1.5 rounded-full bg-violet-500 animate-bounce [animation-delay:300ms]" />
+              <span className="h-1.5 w-1.5 rounded-full bg-brand-primary animate-bounce [animation-delay:0ms]" />
+              <span className="h-1.5 w-1.5 rounded-full bg-brand-primary animate-bounce [animation-delay:150ms]" />
+              <span className="h-1.5 w-1.5 rounded-full bg-brand-primary animate-bounce [animation-delay:300ms]" />
             </div>
             <p
-              className="text-sm text-violet-300 font-medium animate-pulse"
+              className="text-sm text-brand-secondary font-medium animate-pulse"
               aria-live="polite"
             >
               {STATUS_MESSAGES[statusIdx]}
@@ -262,9 +305,9 @@ export default function AuditForm({ onSuccess }: AuditFormProps) {
 
         {/* Error state */}
         {error && (
-          <div className="flex items-start gap-2 rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-3">
+          <div className="flex items-start gap-2 rounded-[var(--radius-md)] bg-status-critical-bg border border-status-critical/20 px-4 py-3">
             <svg
-              className="h-5 w-5 text-red-400 shrink-0 mt-0.5"
+              className="h-5 w-5 text-status-critical shrink-0 mt-0.5"
               viewBox="0 0 20 20"
               fill="currentColor"
             >
@@ -275,12 +318,12 @@ export default function AuditForm({ onSuccess }: AuditFormProps) {
               />
             </svg>
             <div className="flex-1 min-w-0">
-              <p className="text-sm text-red-300">{error}</p>
+              <p className="text-sm text-status-critical">{error}</p>
             </div>
             <button
               type="button"
               onClick={() => setError(null)}
-              className="text-red-400 hover:text-red-300 text-sm font-medium shrink-0 cursor-pointer"
+              className="text-status-critical hover:text-status-critical/80 text-sm font-medium shrink-0 cursor-pointer"
             >
               Dismiss
             </button>
