@@ -27,15 +27,18 @@ export interface OwnerProfile {
 
 /** Revenue impact estimate (Feature 1). */
 export interface RevenueImpact {
+  hasIssues: boolean;
   monthlyVisitorsEstimate: number;
   conversionBaseline: number;
   lostConversions: number;
   lostRevenueMin: number;
   lostRevenueMax: number;
   currency: string;
-  severity: 'critical' | 'poor' | 'fair';
+  severity: 'critical' | 'poor' | 'fair' | 'good';
   headline: string;
+  subtext: string;
   disclaimer: string;
+  contributingFactors: Array<{ factor: string; loss: number }>;
 }
 
 /** Google Business Profile audit result (Feature 2). */

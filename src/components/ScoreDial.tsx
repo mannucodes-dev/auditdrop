@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { motion, useInView } from 'framer-motion';
 
 interface ScoreDialProps {
   score: number | null;
@@ -8,60 +9,53 @@ interface ScoreDialProps {
   size?: number;
 }
 
-/**
- * Animated circular score dial.
- *
- * Displays a 0–100 score with color-coded ring.
- * Shows "N/A" with gray styling when score is null (failed audit).
- */
-export default function ScoreDial({ score, label, size = 100 }: ScoreDialProps) {
-  const circleRef = useRef<SVGCircleElement>(null);
+export default function ScoreDial({ score, label, size = 120 }: ScoreDialProps) {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: '-30px' });
+  const [displayScore, setDisplayScore] = useState(0);
 
-  const radius = 40;
+  const radius = 45;
   const circumference = 2 * Math.PI * radius;
-
-  // Calculate the stroke offset for the score
-  const percentage = score !== null ? Math.min(Math.max(score, 0), 100) : 0;
-  const offset = circumference - (percentage / 100) * circumference;
+  const strokeDashoffset = score !== null
+    ? circumference - (score / 100) * circumference
+    : circumference;
 
   // Color based on score
-  const getColor = (): string => {
-    if (score === null) return 'var(--color-text-muted)';
-    if (score >= 90) return 'var(--color-status-excellent)';
-    if (score >= 75) return 'var(--color-status-good)';
-    if (score >= 50) return 'var(--color-status-warning)';
-    return 'var(--color-status-critical)';
+  const getColor = (s: number | null) => {
+    if (s === null) return { stroke: '#475569', text: 'text-text-muted', glow: '' };
+    if (s >= 90) return { stroke: '#10B981', text: 'text-status-good', glow: 'score-glow-green' };
+    if (s >= 50) return { stroke: '#F59E0B', text: 'text-status-warning', glow: 'score-glow-amber' };
+    return { stroke: '#EF4444', text: 'text-status-critical', glow: 'score-glow-red' };
   };
 
-  const getTextColorClass = (): string => {
-    if (score === null) return 'text-text-muted';
-    if (score >= 90) return 'text-status-excellent';
-    if (score >= 75) return 'text-status-good';
-    if (score >= 50) return 'text-status-warning';
-    return 'text-status-critical';
-  };
+  const color = getColor(score);
 
+  // Count-up animation
   useEffect(() => {
-    if (circleRef.current && score !== null) {
-      // Start from full offset (empty) and animate to target
-      circleRef.current.style.strokeDashoffset = String(circumference);
-      requestAnimationFrame(() => {
-        if (circleRef.current) {
-          circleRef.current.style.transition = 'stroke-dashoffset 1.2s ease-out';
-          circleRef.current.style.strokeDashoffset = String(offset);
-        }
-      });
-    }
-  }, [score, offset, circumference]);
+    if (!inView || score === null) return;
+    const duration = 1200;
+    const steps = 30;
+    const increment = score / steps;
+    let current = 0;
+    const timer = setInterval(() => {
+      current += increment;
+      if (current >= score) {
+        setDisplayScore(score);
+        clearInterval(timer);
+      } else {
+        setDisplayScore(Math.floor(current));
+      }
+    }, duration / steps);
+    return () => clearInterval(timer);
+  }, [inView, score]);
 
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div ref={ref} className={`flex flex-col items-center gap-2 ${color.glow}`}>
       <div className="relative" style={{ width: size, height: size }}>
         <svg
-          width={size}
-          height={size}
           viewBox="0 0 100 100"
-          className="-rotate-90"
+          className="transform -rotate-90"
+          style={{ width: size, height: size }}
         >
           {/* Background circle */}
           <circle
@@ -69,33 +63,36 @@ export default function ScoreDial({ score, label, size = 100 }: ScoreDialProps) 
             cy="50"
             r={radius}
             fill="none"
-            stroke="var(--color-bg-border)"
-            strokeWidth="6"
+            stroke="rgba(42, 42, 58, 0.5)"
+            strokeWidth="8"
           />
           {/* Score arc */}
           {score !== null && (
-            <circle
-              ref={circleRef}
+            <motion.circle
               cx="50"
               cy="50"
               r={radius}
               fill="none"
-              stroke={getColor()}
-              strokeWidth="6"
+              stroke={color.stroke}
+              strokeWidth="8"
               strokeLinecap="round"
               strokeDasharray={circumference}
-              strokeDashoffset={circumference}
+              initial={{ strokeDashoffset: circumference }}
+              animate={inView ? { strokeDashoffset } : { strokeDashoffset: circumference }}
+              transition={{ duration: 1.5, ease: 'easeOut', delay: 0.3 }}
             />
           )}
         </svg>
-        {/* Score text */}
+
+        {/* Score number */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className={`text-2xl font-bold ${getTextColorClass()}`}>
-            {score !== null ? score : 'N/A'}
+          <span className={`text-2xl font-bold ${color.text}`}>
+            {score === null ? 'N/A' : inView ? displayScore : 0}
           </span>
         </div>
       </div>
-      <span className="text-xs font-medium text-text-muted uppercase tracking-wider">
+
+      <span className="text-xs text-text-muted uppercase tracking-wider font-medium">
         {label}
       </span>
     </div>

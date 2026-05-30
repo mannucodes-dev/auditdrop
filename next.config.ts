@@ -9,6 +9,7 @@ const commonSecurityHeaders = [
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
   { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+  { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
 ];
 
 const globalCSP = [
@@ -17,8 +18,8 @@ const globalCSP = [
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",
   "img-src 'self' data: https: blob:",
-  "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://api.screenshotone.com https://maps.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com",
-  "frame-src 'none'",
+  "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://api.screenshotone.com https://api.microlink.io https://maps.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com",
+  "frame-src 'self' https://*.firebaseapp.com",
 ].join('; ');
 
 const embedCSP = [
@@ -27,8 +28,9 @@ const embedCSP = [
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",
   "img-src 'self' data: https: blob:",
-  "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://api.screenshotone.com https://maps.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com",
+  "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://api.screenshotone.com https://api.microlink.io https://maps.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com",
   "frame-ancestors *",
+  "frame-src 'self' https://*.firebaseapp.com",
 ].join('; ');
 
 const nextConfig: NextConfig = {

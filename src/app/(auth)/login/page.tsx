@@ -26,10 +26,15 @@ export default function LoginPage() {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
       router.push('/dashboard');
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Sign in failed. Please try again.';
-      setError(message);
+    } catch (err: unknown) {
+      const firebaseErr = err as { code?: string };
+      if (firebaseErr?.code === 'auth/popup-closed-by-user') {
+        setError('Sign in was cancelled. Please try again.');
+      } else {
+        const message =
+          err instanceof Error ? err.message : 'Sign in failed. Please try again.';
+        setError(message);
+      }
       setSigningIn(false);
     }
   };

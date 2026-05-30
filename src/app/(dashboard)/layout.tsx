@@ -72,7 +72,7 @@ export default function DashboardLayout({
   return (
     <div className="min-h-screen bg-bg-primary">
       {/* Navigation bar */}
-      <nav className="sticky top-0 z-50 bg-bg-secondary/80 backdrop-blur-xl border-b border-bg-border">
+      <nav className="sticky top-0 z-50 glass-nav border-b border-bg-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Left: Brand */}
@@ -81,7 +81,7 @@ export default function DashboardLayout({
                 href="/dashboard"
                 className="flex items-center gap-2.5 group"
               >
-                <div className="flex items-center justify-center w-8 h-8 rounded-[var(--radius-md)] bg-brand-primary shadow-md shadow-brand-primary/20 group-hover:shadow-brand-primary/40 transition-shadow">
+                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-brand-primary shadow-md shadow-brand-primary/20 group-hover:shadow-brand-primary/40 transition-shadow">
                   <svg
                     className="w-4 h-4 text-white"
                     fill="none"
@@ -105,13 +105,13 @@ export default function DashboardLayout({
               <div className="hidden md:flex items-center gap-1">
                 <Link
                   href="/dashboard"
-                  className="px-3 py-1.5 rounded-[var(--radius-md)] text-sm text-text-secondary hover:text-text-primary hover:bg-bg-tertiary transition-all"
+                  className="px-3 py-1.5 rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-bg-tertiary transition-all underline-grow"
                 >
                   Dashboard
                 </Link>
                 <Link
                   href="/dashboard/settings"
-                  className="px-3 py-1.5 rounded-[var(--radius-md)] text-sm text-text-secondary hover:text-text-primary hover:bg-bg-tertiary transition-all"
+                  className="px-3 py-1.5 rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-bg-tertiary transition-all underline-grow"
                 >
                   Settings
                 </Link>
@@ -123,7 +123,7 @@ export default function DashboardLayout({
               {/* New Audit button */}
               <Link
                 href="/dashboard/new"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-[var(--radius-lg)] text-sm font-semibold text-white bg-brand-primary hover:bg-brand-primary-hover shadow-md shadow-brand-primary/20 hover:shadow-brand-primary/40 transition-all hover:-translate-y-0.5 active:translate-y-0"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-brand-primary hover:bg-brand-primary-hover shadow-md shadow-brand-primary/20 hover:shadow-brand-primary/40 transition-all hover:-translate-y-0.5 active:translate-y-0 shimmer-btn"
               >
                 <svg
                   className="w-4 h-4"
@@ -145,7 +145,7 @@ export default function DashboardLayout({
               <div className="relative" ref={menuRef}>
                 <button
                   onClick={() => setMenuOpen(!menuOpen)}
-                  className="flex items-center gap-2 p-1.5 rounded-[var(--radius-lg)] hover:bg-bg-tertiary transition-colors cursor-pointer"
+                  className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-bg-tertiary transition-colors cursor-pointer"
                   aria-label="User menu"
                   aria-expanded={menuOpen}
                 >
@@ -181,7 +181,7 @@ export default function DashboardLayout({
 
                 {/* Dropdown menu */}
                 {menuOpen && (
-                  <div className="absolute right-0 mt-2 w-64 rounded-[var(--radius-lg)] bg-bg-secondary border border-bg-border shadow-elevated overflow-hidden animate-fade-in">
+                  <div className="absolute right-0 mt-2 w-64 rounded-xl bg-bg-secondary border border-bg-border shadow-elevated overflow-hidden animate-fade-in">
                     {/* User info */}
                     <div className="px-4 py-3 border-b border-bg-border">
                       <p className="text-sm font-medium text-text-primary truncate">
@@ -229,7 +229,7 @@ export default function DashboardLayout({
       </nav>
 
       {/* Page content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 grid-bg">
         {children}
       </main>
     </div>

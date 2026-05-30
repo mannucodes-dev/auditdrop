@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import type { Report } from '@/hooks/useReports';
+import { decodeHtmlEntities } from '@/lib/scraper';
 import type { ProspectStatus } from '@/lib/types';
 import { Badge } from '@/components/ui/Badge';
 
@@ -66,6 +67,12 @@ export default function ReportCard({
   onStatusChange,
   onNotesChange,
 }: ReportCardProps) {
+  // Fix 1: Decode HTML entities in business name
+  const decodedName = useMemo(() => decodeHtmlEntities(report.businessName), [report.businessName]);
+
+  // Fix 2: Treat score 0 as null (PSI failure sentinel)
+  const displayMobileScore = (report.mobileScore === null || report.mobileScore === 0) ? null : report.mobileScore;
+  const displayDesktopScore = (report.desktopScore === null || report.desktopScore === 0) ? null : report.desktopScore;
   const [notesOpen, setNotesOpen] = useState(false);
   const [notes, setNotes] = useState(report.prospectNotes ?? '');
   const [shareOpen, setShareOpen] = useState(false);
@@ -107,11 +114,11 @@ export default function ReportCard({
   }, [notes, report.id, report.prospectNotes, onNotesChange]);
 
   const handleDelete = useCallback(async () => {
-    if (!window.confirm(`Delete report for "${report.businessName}"? This cannot be undone.`)) {
+    if (!window.confirm(`Delete report for "${decodedName}"? This cannot be undone.`)) {
       return;
     }
     await onDelete(report.id);
-  }, [report.id, report.businessName, onDelete]);
+  }, [report.id, decodedName, onDelete]);
 
   const reportUrl =
     typeof window !== 'undefined'
@@ -125,7 +132,9 @@ export default function ReportCard({
   }, [reportUrl]);
 
   const handleWhatsApp = useCallback(() => {
-    const message = `Hey! I ran a quick website audit for ${report.businessName}.\n\nMobile Score: ${report.mobileScore ?? 'N/A'}/100\nDesktop Score: ${report.desktopScore ?? 'N/A'}/100\n\nSee the full report: ${typeof window !== 'undefined' ? window.location.origin : ''}/r/${report.id}`;
+    const mobileLabel = displayMobileScore !== null ? `${displayMobileScore}/100` : 'N/A';
+    const desktopLabel = displayDesktopScore !== null ? `${displayDesktopScore}/100` : 'N/A';
+    const message = `Hey! I ran a quick website audit for ${decodedName}.\n\nMobile Score: ${mobileLabel}\nDesktop Score: ${desktopLabel}\n\nSee the full report: ${typeof window !== 'undefined' ? window.location.origin : ''}/r/${report.id}`;
     const encoded = encodeURIComponent(message);
     const phone = report.prospectPhone?.replace(/[^0-9]/g, '');
     const url = phone
@@ -133,7 +142,7 @@ export default function ReportCard({
       : `https://wa.me/?text=${encoded}`;
     window.open(url, '_blank', 'noopener');
     setShareOpen(false);
-  }, [report]);
+  }, [report, decodedName, displayMobileScore, displayDesktopScore]);
 
   /* -- derived -- */
 
@@ -141,17 +150,26 @@ export default function ReportCard({
   const viewHighlight =
     report.viewCount > 0 && (report.prospectStatus ?? 'new') === 'new';
 
+  // Status-specific border accent
+  const statusBorder = report.prospectStatus === 'won'
+    ? 'border-l-4 border-l-status-good'
+    : report.prospectStatus === 'contacted'
+      ? 'border-l-4 border-l-brand-primary'
+      : viewHighlight
+        ? 'border-l-4 border-l-status-warning'
+        : '';
+
   /* ---------------------------------------------------------------- */
   /*  Render                                                           */
   /* ---------------------------------------------------------------- */
 
   return (
-    <div className="bg-bg-secondary border border-bg-border rounded-[var(--radius-lg)] p-5 hover:border-bg-border-hover transition-colors">
+    <div className={`glass-card rounded-xl p-5 hover:border-brand-primary/30 transition-all duration-300 hover:-translate-y-0.5 ${statusBorder}`}>
       {/* ---- Header ---- */}
       <div className="flex items-start justify-between">
         <div className="min-w-0">
           <p className="text-text-primary font-semibold text-base truncate max-w-[200px]">
-            {report.businessName}
+            {decodedName}
           </p>
           <p className="text-text-muted text-xs truncate max-w-[200px]">
             {report.businessUrl}
@@ -165,9 +183,9 @@ export default function ReportCard({
         {/* Mobile score */}
         <div className="flex items-center gap-1.5">
           <span
-            className={`flex items-center justify-center w-8 h-8 rounded-full border border-bg-border text-sm font-semibold ${scoreColor(report.mobileScore)}`}
+            className={`flex items-center justify-center w-8 h-8 rounded-full border border-bg-border text-sm font-semibold ${scoreColor(displayMobileScore)}`}
           >
-            {scoreLabel(report.mobileScore)}
+            {scoreLabel(displayMobileScore)}
           </span>
           <span className="text-xs text-text-muted">Mobile</span>
         </div>
@@ -175,9 +193,9 @@ export default function ReportCard({
         {/* Desktop score */}
         <div className="flex items-center gap-1.5">
           <span
-            className={`flex items-center justify-center w-8 h-8 rounded-full border border-bg-border text-sm font-semibold ${scoreColor(report.desktopScore)}`}
+            className={`flex items-center justify-center w-8 h-8 rounded-full border border-bg-border text-sm font-semibold ${scoreColor(displayDesktopScore)}`}
           >
-            {scoreLabel(report.desktopScore)}
+            {scoreLabel(displayDesktopScore)}
           </span>
           <span className="text-xs text-text-muted">Desktop</span>
         </div>

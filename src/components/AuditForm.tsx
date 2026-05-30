@@ -9,10 +9,11 @@ interface AuditFormProps {
 }
 
 const STATUS_MESSAGES = [
-  'Analyzing mobile performance…',
-  'Checking desktop speed…',
-  'Running custom checks…',
-  'Generating your report…',
+  { text: 'Fetching website...', pct: 10 },
+  { text: 'Running mobile performance test...', pct: 30 },
+  { text: 'Checking SEO signals...', pct: 55 },
+  { text: 'Calculating revenue impact...', pct: 75 },
+  { text: 'Generating your report...', pct: 90 },
 ] as const;
 
 function normalizeUrl(raw: string): string {
@@ -42,13 +43,20 @@ export default function AuditForm({ onSuccess }: AuditFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [statusIdx, setStatusIdx] = useState(0);
 
-  // Cycle loading messages every 3 seconds while loading
+  // Staged loading progress
   useEffect(() => {
-    if (!loading) return;
-    const interval = setInterval(() => {
-      setStatusIdx((prev) => (prev + 1) % STATUS_MESSAGES.length);
-    }, 3000);
-    return () => clearInterval(interval);
+    if (!loading) {
+      setStatusIdx(0);
+      return;
+    }
+    const delays = [0, 2000, 6000, 10000, 14000];
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    delays.forEach((delay, idx) => {
+      if (idx > 0) {
+        timers.push(setTimeout(() => setStatusIdx(idx), delay));
+      }
+    });
+    return () => timers.forEach(clearTimeout);
   }, [loading]);
 
   const handleSubmit = useCallback(
@@ -286,20 +294,29 @@ export default function AuditForm({ onSuccess }: AuditFormProps) {
           )}
         </div>
 
-        {/* Loading status messages */}
+        {/* Loading progress sequence */}
         {loading && (
-          <div className="flex items-center justify-center gap-2 py-3">
-            <div className="flex gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-brand-primary animate-bounce [animation-delay:0ms]" />
-              <span className="h-1.5 w-1.5 rounded-full bg-brand-primary animate-bounce [animation-delay:150ms]" />
-              <span className="h-1.5 w-1.5 rounded-full bg-brand-primary animate-bounce [animation-delay:300ms]" />
+          <div className="space-y-3 py-3">
+            {/* Progress bar */}
+            <div className="h-1.5 bg-bg-border rounded-full overflow-hidden">
+              <div
+                className="h-full bg-brand-primary rounded-full transition-all duration-700 ease-out"
+                style={{ width: `${STATUS_MESSAGES[statusIdx].pct}%` }}
+              />
             </div>
-            <p
-              className="text-sm text-brand-secondary font-medium animate-pulse"
-              aria-live="polite"
-            >
-              {STATUS_MESSAGES[statusIdx]}
-            </p>
+            <div className="flex items-center justify-center gap-2">
+              <div className="flex gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-brand-primary animate-bounce [animation-delay:0ms]" />
+                <span className="h-1.5 w-1.5 rounded-full bg-brand-primary animate-bounce [animation-delay:150ms]" />
+                <span className="h-1.5 w-1.5 rounded-full bg-brand-primary animate-bounce [animation-delay:300ms]" />
+              </div>
+              <p
+                className="text-sm text-brand-secondary font-medium"
+                aria-live="polite"
+              >
+                {STATUS_MESSAGES[statusIdx].text}
+              </p>
+            </div>
           </div>
         )}
 

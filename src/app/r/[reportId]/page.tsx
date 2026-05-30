@@ -34,15 +34,19 @@ async function getReportData(reportId: string) {
 
 async function getOwnerProfile(userId: string) {
   if (!userId) return null;
-  const userDoc = await adminDb.collection('users').doc(userId).get();
-  if (!userDoc.exists) return null;
+  try {
+    const userDoc = await adminDb.collection('users').doc(userId).get();
+    if (!userDoc.exists) return null;
 
-  const data = userDoc.data();
-  return {
-    displayName: data?.displayName || '',
-    ctaUrl: data?.ctaUrl || '',
-    ctaLabel: data?.ctaLabel || 'Book a Free Call',
-  };
+    const data = userDoc.data();
+    return {
+      displayName: data?.displayName || '',
+      ctaUrl: data?.ctaUrl || '',
+      ctaLabel: data?.ctaLabel || 'Book a Free Call',
+    };
+  } catch {
+    return null;
+  }
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {

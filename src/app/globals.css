@@ -189,3 +189,232 @@ body {
 *:focus:not(:focus-visible) {
   outline: none;
 }
+
+/* ─────────────────────────────────────────────────────────────
+   Premium Visual Effects
+   ───────────────────────────────────────────────────────────── */
+
+/* Animated gradient border — rotate conic gradient via CSS Houdini */
+@property --angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes gradient-rotate {
+  to { --angle: 360deg; }
+}
+
+.gradient-border {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(
+    from var(--angle),
+    var(--color-brand-primary),
+    var(--color-brand-secondary),
+    var(--color-status-excellent),
+    var(--color-brand-primary)
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: gradient-rotate 4s linear infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Grid background overlay */
+.grid-bg {
+  background-image:
+    linear-gradient(rgba(124, 58, 237, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(124, 58, 237, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Noise texture overlay */
+.noise-bg {
+  position: relative;
+}
+.noise-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 0;
+}
+
+/* Shimmer CTA effect */
+@keyframes shimmer-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.shimmer-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.08) 45%,
+    rgba(255, 255, 255, 0.12) 50%,
+    rgba(255, 255, 255, 0.08) 55%,
+    transparent 70%
+  );
+  animation: shimmer-slide 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Score glow classes */
+.score-glow-green {
+  filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.4));
+}
+
+.score-glow-amber {
+  filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.4));
+}
+
+.score-glow-red {
+  filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.4));
+}
+
+/* Hero blob float */
+@keyframes blob-float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(20px, -30px) scale(1.05); }
+  50% { transform: translate(-10px, 15px) scale(0.95); }
+  75% { transform: translate(15px, 20px) scale(1.02); }
+}
+
+.animate-blob {
+  animation: blob-float 8s ease-in-out infinite;
+}
+
+.animate-blob-delay {
+  animation: blob-float 8s ease-in-out infinite;
+  animation-delay: 2s;
+}
+
+/* Confetti animation for "Won" status */
+@keyframes confetti-burst {
+  0% { transform: scale(0); opacity: 1; }
+  50% { transform: scale(1.3); opacity: 0.8; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
+.animate-confetti {
+  animation: confetti-burst 0.6s ease-out forwards;
+}
+
+/* Count-up number animation */
+@keyframes count-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-count-in {
+  animation: count-fade-in 0.5s ease-out;
+}
+
+/* Glassmorphism with @supports */
+@supports (backdrop-filter: blur(0)) {
+  .glass {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    background-color: rgba(17, 17, 24, 0.7);
+    border: 1px solid rgba(42, 42, 58, 0.5);
+  }
+
+  .glass-card {
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    background-color: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(42, 42, 58, 0.4);
+  }
+
+  .glass-nav {
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    background-color: rgba(17, 17, 24, 0.8);
+  }
+}
+
+/* Fallback for browsers without backdrop-filter */
+@supports not (backdrop-filter: blur(0)) {
+  .glass,
+  .glass-card {
+    background-color: rgba(17, 17, 24, 0.95);
+    border: 1px solid rgba(42, 42, 58, 0.6);
+  }
+
+  .glass-nav {
+    background-color: rgba(17, 17, 24, 0.98);
+  }
+}
+
+/* Radial gradient hero background */
+.hero-gradient {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(124, 58, 237, 0.15), transparent 70%),
+    radial-gradient(ellipse 60% 40% at 80% 50%, rgba(168, 85, 247, 0.08), transparent 60%),
+    var(--color-bg-primary);
+}
+
+/* WhatsApp chat typing dots */
+@keyframes typing-dot {
+  0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-3px); }
+}
+
+.typing-dot:nth-child(1) { animation: typing-dot 1.4s ease-in-out infinite; }
+.typing-dot:nth-child(2) { animation: typing-dot 1.4s ease-in-out 0.2s infinite; }
+.typing-dot:nth-child(3) { animation: typing-dot 1.4s ease-in-out 0.4s infinite; }
+
+/* Underline grow for nav links */
+.underline-grow {
+  position: relative;
+}
+
+.underline-grow::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--color-brand-primary);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s ease;
+}
+
+.underline-grow:hover::after {
+  transform: scaleX(1);
+}
+
+/* Progress bar fill */
+@keyframes progress-fill {
+  from { width: 0%; }
+}
+
+.animate-progress-fill {
+  animation: progress-fill 1s ease-out forwards;
+}

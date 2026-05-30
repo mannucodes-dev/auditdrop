@@ -66,8 +66,9 @@ const CONVERSION_BASELINE = 0.03; // 3%
 /**
  * Calculates estimated monthly revenue loss based on audit issues.
  *
- * Uses category-specific visitor and lead-value estimates to produce
- * a ₹ range that resonates with Indian SMB owners.
+ * Only adds losses when issues ACTUALLY exist — never penalises
+ * sites that are already performing well. Returns a positive state
+ * when no issues are found, making the tool credible.
  */
 export function calculateRevenueImpact(
   mobileScore: number | null,
@@ -78,76 +79,96 @@ export function calculateRevenueImpact(
 ): RevenueImpact {
   const visitors = MONTHLY_VISITORS[businessCategory];
   const leadValue = LEAD_VALUE[businessCategory];
+  const issues: Array<{ factor: string; loss: number }> = [];
+  let totalLossPercent = 0;
 
-  // Calculate conversion loss percentage from issues
-  let lossPct = 0;
-
-  // Mobile speed impact
-  const effectiveMobileScore = mobileScore ?? 30; // assume bad if unavailable
-  if (effectiveMobileScore < 50) {
-    lossPct += 35;
-  } else if (effectiveMobileScore < 70) {
-    lossPct += 20;
-  } else if (effectiveMobileScore < 90) {
-    lossPct += 5;
+  // Mobile speed — only penalise if score is actually bad
+  if (mobileScore !== null && mobileScore < 50) {
+    issues.push({ factor: 'Mobile Speed Critical', loss: 40 });
+    totalLossPercent += 40;
+  } else if (mobileScore !== null && mobileScore < 70) {
+    issues.push({ factor: 'Mobile Speed Poor', loss: 20 });
+    totalLossPercent += 20;
   }
 
-  // Desktop speed impact (lower weight than mobile)
-  const effectiveDesktopScore = desktopScore ?? 50;
-  if (effectiveDesktopScore < 50) {
-    lossPct += 10;
-  } else if (effectiveDesktopScore < 70) {
-    lossPct += 5;
+  // Only apply viewport loss if actually failing
+  if (checks.hasViewport === false) {
+    issues.push({ factor: 'Mobile Layout Broken', loss: 30 });
+    totalLossPercent += 30;
+  }
+  if (checks.hasClickToCall === false) {
+    issues.push({ factor: 'No Click-to-Call', loss: 15 });
+    totalLossPercent += 15;
+  }
+  if (checks.hasContactForm === false) {
+    issues.push({ factor: 'No Contact Form', loss: 10 });
+    totalLossPercent += 10;
+  }
+  if (checks.hasHttps === false) {
+    issues.push({ factor: 'No HTTPS', loss: 20 });
+    totalLossPercent += 20;
+  }
+  if (seoChecks?.hasMetaDescription === false) {
+    issues.push({ factor: 'Missing Meta Description', loss: 15 });
+    totalLossPercent += 15;
+  }
+  if (seoChecks?.hasH1 === false) {
+    issues.push({ factor: 'No H1 Tag', loss: 10 });
+    totalLossPercent += 10;
   }
 
-  // Functional issues
-  if (checks.hasClickToCall === false) lossPct += 15;
-  if (checks.hasContactForm === false) lossPct += 10;
-  if (checks.hasViewport === false) lossPct += 25;
-  if (checks.hasHttps === false) lossPct += 20;
-
-  // SEO issues (moderate impact)
-  if (seoChecks) {
-    if (!seoChecks.hasMetaDescription) lossPct += 5;
-    if (!seoChecks.hasH1) lossPct += 5;
-    if (!seoChecks.hasStructuredData) lossPct += 3;
+  // If NO issues: show positive state, not zero loss
+  if (totalLossPercent === 0) {
+    return {
+      hasIssues: false,
+      monthlyVisitorsEstimate: visitors,
+      conversionBaseline: CONVERSION_BASELINE,
+      lostConversions: 0,
+      lostRevenueMin: 0,
+      lostRevenueMax: 0,
+      currency: '₹',
+      severity: 'good',
+      headline: 'This website is performing well',
+      subtext: 'No major issues found that would significantly impact lead capture.',
+      disclaimer: '',
+      contributingFactors: [],
+    };
   }
 
-  // Cap at 80%
-  lossPct = Math.min(lossPct, 80);
+  const cappedLoss = Math.min(totalLossPercent, 80);
+  const baseline = visitors * CONVERSION_BASELINE;
+  const lostLeads = Math.round(baseline * (cappedLoss / 100));
+  const lostMin = Math.max(roundToNearest(lostLeads * leadValue * 0.7, 100), 1000);
+  const lostMax = Math.max(roundToNearest(lostLeads * leadValue * 1.3, 100), 2000);
 
-  // Calculate lost conversions and revenue
-  const lostConversions = Math.round(visitors * CONVERSION_BASELINE * (lossPct / 100));
-  const baseLostRevenue = lostConversions * leadValue;
-  const lostRevenueMin = roundToNearest(baseLostRevenue * 0.8, 500);
-  const lostRevenueMax = roundToNearest(baseLostRevenue * 1.2, 500);
-
-  // Determine severity and headline
-  let severity: 'critical' | 'poor' | 'fair';
+  let severity: 'critical' | 'poor' | 'fair' | 'good';
   let headline: string;
 
-  if (lossPct > 50) {
+  if (cappedLoss > 50) {
     severity = 'critical';
-    headline = `This website is losing ₹${formatINR(lostRevenueMin)}–₹${formatINR(lostRevenueMax)} every month`;
-  } else if (lossPct >= 30) {
+    headline = `This website is losing ₹${formatINR(lostMin)}–₹${formatINR(lostMax)} every month`;
+  } else if (cappedLoss > 30) {
     severity = 'poor';
-    headline = `This website is leaking ₹${formatINR(lostRevenueMin)}–₹${formatINR(lostRevenueMax)}/month in lost business`;
+    headline = `This website is leaking ₹${formatINR(lostMin)}–₹${formatINR(lostMax)}/month in lost business`;
   } else {
     severity = 'fair';
-    headline = `Fixing these issues could recover ₹${formatINR(lostRevenueMin)}–₹${formatINR(lostRevenueMax)}/month`;
+    headline = `Fixing these issues could recover ₹${formatINR(lostMin)}–₹${formatINR(lostMax)}/month`;
   }
 
   return {
+    hasIssues: true,
     monthlyVisitorsEstimate: visitors,
     conversionBaseline: CONVERSION_BASELINE,
-    lostConversions,
-    lostRevenueMin,
-    lostRevenueMax,
+    lostConversions: lostLeads,
+    lostRevenueMin: lostMin,
+    lostRevenueMax: lostMax,
     currency: '₹',
     severity,
     headline,
+    subtext: `Based on ~${visitors} estimated monthly visitors`,
     disclaimer:
       'Estimates based on industry averages for similar businesses. Actual results depend on location, competition, and service quality.',
+    contributingFactors: issues,
   };
 }
 
