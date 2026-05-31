@@ -2,7 +2,16 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { motion, useInView } from 'framer-motion';
+import { BentoGrid, BentoCard } from '@/components/ui/BentoGrid';
+import { GlassCard } from '@/components/ui/GlassCard';
+
+// Lazy-load TiltCard — decorative, not needed for initial render
+const TiltCard = dynamic(
+  () => import('@/components/ui/TiltCard').then(m => ({ default: m.TiltCard })),
+  { ssr: false }
+);
 
 // ─── Animated Counter ────────────────────────────────────────
 function Counter({ target, suffix = '' }: { target: number; suffix?: string }) {
@@ -277,7 +286,7 @@ export default function LandingPage() {
 
         {/* ═══════════════════ STATS ═══════════════════ */}
         <Section className="py-16">
-          <div className="glass-card rounded-2xl p-8 sm:p-12">
+          <GlassCard variant="hero" className="p-8 sm:p-12">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 text-center">
               {[
                 { value: 1247, suffix: '+', label: 'Reports generated' },
@@ -291,14 +300,14 @@ export default function LandingPage() {
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.1, duration: 0.4 }}
                 >
-                  <p className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-brand-primary to-brand-secondary bg-clip-text text-transparent">
+                  <p className="text-4xl sm:text-5xl font-bold font-[family-name:var(--font-display)] bg-gradient-to-r from-brand-teal to-brand-teal-light bg-clip-text text-transparent">
                     <Counter target={stat.value} suffix={stat.suffix} />
                   </p>
                   <p className="text-text-secondary text-sm mt-2">{stat.label}</p>
                 </motion.div>
               ))}
             </div>
-          </div>
+          </GlassCard>
         </Section>
 
         {/* ═══════════════════ FEATURE BENTO ═══════════════════ */}
@@ -310,31 +319,33 @@ export default function LandingPage() {
             <p className="mt-3 text-text-secondary">Professional audit reports that make prospects say &quot;yes&quot;.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+          <BentoGrid columns={6} className="">
             {[
-              { title: 'Revenue Impact', desc: 'Show prospects exactly how much money their broken website costs them.', icon: '₹', span: 'md:col-span-4', accent: 'from-status-critical/10 to-status-warning/10' },
-              { title: 'Mobile + Desktop', desc: 'Google Lighthouse scores for both strategies.', icon: '📱', span: 'md:col-span-2', accent: 'from-brand-primary/10 to-brand-secondary/10' },
-              { title: 'SEO Health', desc: 'Meta tags, headings, structured data — all checked.', icon: '🔍', span: 'md:col-span-2', accent: 'from-status-good/10 to-status-excellent/10' },
-              { title: 'Google Business Profile', desc: 'Rating, reviews, and profile completeness audited automatically.', icon: '⭐', span: 'md:col-span-4', accent: 'from-status-warning/10 to-status-good/10' },
-              { title: 'WhatsApp-Ready', desc: 'One-click share with pre-written conversion message.', icon: '💬', span: 'md:col-span-3', accent: 'from-[#25D366]/10 to-brand-primary/10' },
-              { title: 'Prospect CRM', desc: 'Track status: New → Viewed → Contacted → Won.', icon: '📋', span: 'md:col-span-3', accent: 'from-brand-secondary/10 to-status-excellent/10' },
+              { title: 'Revenue Impact', desc: 'Show prospects exactly how much money their broken website costs them.', icon: '₹', colSpan: 4 as const, accent: 'from-status-critical/10 to-status-warning/10' },
+              { title: 'Mobile + Desktop', desc: 'Google Lighthouse scores for both strategies.', icon: '📱', colSpan: 2 as const, accent: 'from-brand-teal/10 to-brand-teal-light/10' },
+              { title: 'SEO Health', desc: 'Meta tags, headings, structured data — all checked.', icon: '🔍', colSpan: 2 as const, accent: 'from-status-good/10 to-status-excellent/10' },
+              { title: 'Google Business Profile', desc: 'Rating, reviews, and profile completeness audited automatically.', icon: '⭐', colSpan: 4 as const, accent: 'from-brand-amber/10 to-status-good/10' },
+              { title: 'WhatsApp-Ready', desc: 'One-click share with pre-written conversion message.', icon: '💬', colSpan: 3 as const, accent: 'from-whatsapp-green/10 to-brand-teal/10' },
+              { title: 'Prospect CRM', desc: 'Track status: New → Viewed → Contacted → Won.', icon: '📋', colSpan: 3 as const, accent: 'from-brand-teal-light/10 to-status-excellent/10' },
             ].map((feature, i) => (
-              <motion.div
-                key={feature.title}
-                initial={{ opacity: 0, y: 15 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: '-30px' }}
-                transition={{ delay: i * 0.08, duration: 0.4 }}
-                className={`${feature.span} glass-card rounded-2xl p-6 hover:border-brand-primary/30 transition-all duration-300 hover:-translate-y-1 group`}
-              >
-                <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${feature.accent} flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform`}>
-                  {feature.icon}
-                </div>
-                <h3 className="text-base font-semibold text-text-primary mb-1">{feature.title}</h3>
-                <p className="text-sm text-text-secondary">{feature.desc}</p>
-              </motion.div>
+              <BentoCard key={feature.title} colSpan={feature.colSpan} hover>
+                <motion.div
+                  initial={{ opacity: 0, y: 15 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: '-30px' }}
+                  transition={{ delay: i * 0.08, duration: 0.4 }}
+                >
+                  <TiltCard maxTilt={6} scale={1.01}>
+                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${feature.accent} flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform`}>
+                      {feature.icon}
+                    </div>
+                    <h3 className="text-base font-semibold text-text-primary mb-1">{feature.title}</h3>
+                    <p className="text-sm text-text-secondary">{feature.desc}</p>
+                  </TiltCard>
+                </motion.div>
+              </BentoCard>
             ))}
-          </div>
+          </BentoGrid>
         </Section>
 
         {/* ═══════════════════ COMPETITOR CALLOUT ═══════════════════ */}

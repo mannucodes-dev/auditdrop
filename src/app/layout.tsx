@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Inter, Space_Grotesk } from 'next/font/google';
 import { ToastProvider } from '@/components/ui/Toast';
 import './globals.css';
 
@@ -8,6 +8,13 @@ const inter = Inter({
   subsets: ['latin'],
   display: 'swap',
   weight: ['400', '500', '600', '700'],
+});
+
+const spaceGrotesk = Space_Grotesk({
+  variable: '--font-display',
+  subsets: ['latin'],
+  display: 'swap',
+  weight: ['500', '600', '700'],
 });
 
 export const metadata: Metadata = {
@@ -28,7 +35,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} h-full antialiased`} suppressHydrationWarning>
+    <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable} h-full antialiased`} suppressHydrationWarning>
       <body className="min-h-full flex flex-col bg-bg-primary text-text-primary font-sans" suppressHydrationWarning>
         <ToastProvider>
           {children}

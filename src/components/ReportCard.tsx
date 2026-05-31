@@ -5,6 +5,8 @@ import type { Report } from '@/hooks/useReports';
 import { decodeHtmlEntities } from '@/lib/scraper';
 import type { ProspectStatus } from '@/lib/types';
 import { Badge } from '@/components/ui/Badge';
+import { calculateDealHeat, type DealHeat } from '@/lib/dealHeat';
+import type { Report as CoreReport, AuditIssue } from '@/lib/types';
 
 /* ------------------------------------------------------------------ */
 /*  Props                                                              */
@@ -73,6 +75,36 @@ export default function ReportCard({
   // Fix 2: Treat score 0 as null (PSI failure sentinel)
   const displayMobileScore = (report.mobileScore === null || report.mobileScore === 0) ? null : report.mobileScore;
   const displayDesktopScore = (report.desktopScore === null || report.desktopScore === 0) ? null : report.desktopScore;
+
+  // Phase 3: Deal heat score
+  const dealHeat = useMemo<DealHeat>(() => {
+    const coreReport: CoreReport = {
+      id: report.id,
+      uid: report.userId,
+      url: report.businessUrl,
+      businessName: report.businessName,
+      mobileScore: displayMobileScore,
+      desktopScore: displayDesktopScore,
+      metrics: report.metrics,
+      issues: [], // We'll populate from checks below
+      ownerProfile: { displayName: '', ctaUrl: '', ctaLabel: '' },
+      views: report.viewCount,
+      lastViewedAt: report.lastViewedAt?.toDate?.()?.toISOString() ?? null,
+      createdAt: report.createdAt?.toDate?.()?.toISOString() ?? '',
+      gbpAudit: report.gbpAudit as CoreReport['gbpAudit'],
+    };
+    // Derive pseudo issues from checks for heat scoring
+    const pseudoIssues: AuditIssue[] = [];
+    if (report.checks.hasClickToCall === false) {
+      pseudoIssues.push({ icon: '📞', title: 'No Tap-to-Call Button', body: '', impact: 'High' });
+    }
+    if (report.checks.hasHttps === false) {
+      pseudoIssues.push({ icon: '🔒', title: 'Site Not Secure (No HTTPS)', body: '', impact: 'High' });
+    }
+    coreReport.issues = pseudoIssues;
+    return calculateDealHeat(coreReport);
+  }, [report, displayMobileScore, displayDesktopScore]);
+
   const [notesOpen, setNotesOpen] = useState(false);
   const [notes, setNotes] = useState(report.prospectNotes ?? '');
   const [shareOpen, setShareOpen] = useState(false);
@@ -175,7 +207,21 @@ export default function ReportCard({
             {report.businessUrl}
           </p>
         </div>
-        <Badge variant={badge.variant}>{badge.label}</Badge>
+        <div className="flex items-center gap-2">
+          {/* Deal Heat badge */}
+          <span
+            className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+              dealHeat.label === 'fire' ? 'bg-status-critical/10 text-status-critical' :
+              dealHeat.label === 'hot' ? 'bg-status-warning/10 text-status-warning' :
+              dealHeat.label === 'warm' ? 'bg-brand-amber/10 text-brand-amber' :
+              'bg-bg-tertiary text-text-muted'
+            }`}
+            title={`Deal Heat: ${dealHeat.score}/100 — ${dealHeat.factors.join(', ')}`}
+          >
+            {dealHeat.emoji} {dealHeat.label}
+          </span>
+          <Badge variant={badge.variant}>{badge.label}</Badge>
+        </div>
       </div>
 
       {/* ---- Scores row ---- */}

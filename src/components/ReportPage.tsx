@@ -1,12 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ScoreDial from '@/components/ScoreDial';
 import IssueCard from '@/components/IssueCard';
 import { Badge } from '@/components/ui/Badge';
+import { CompetitorHero } from '@/components/CompetitorHero';
+import { LanguageToggle } from '@/components/LanguageToggle';
+import { FixPreview } from '@/components/FixPreview';
+import { ProposalCTA } from '@/components/ProposalCTA';
 import { calculateRevenueImpact, generateIssues } from '@/lib/reportUtils';
+import { generateCompetitorVerdicts } from '@/lib/competitorFraming';
+import { translateToMoneyIssues } from '@/lib/moneyTranslation';
+import { t, type ReportLanguage } from '@/lib/translations';
 import { decodeHtmlEntities } from '@/lib/scraper';
 import type { BusinessCategory } from '@/lib/scraper';
+import type { Report, AuditIssue } from '@/lib/types';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -231,6 +239,48 @@ export default function ReportPage({ report, ownerProfile }: ReportPageProps) {
     report.seoChecks
   );
 
+  // ── Phase 3: Moat features ──────────────────────────────────────
+
+  // Language toggle state
+  const [language, setLanguage] = useState<ReportLanguage>('en');
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('auditdrop-lang');
+      if (saved === 'hi-simple') setLanguage('hi-simple');
+    } catch { /* ignore */ }
+  }, []);
+
+  // Competitor verdicts
+  const competitorVerdicts = generateCompetitorVerdicts(
+    { ...buildReportForFraming(report, issues, displayMobileScore, displayDesktopScore) }
+  );
+
+  // Money-first issue translations
+  const category = (report.businessCategory as BusinessCategory) || 'general';
+  const auditIssues: AuditIssue[] = issues.map((i) => ({
+    icon: i.icon,
+    title: i.title,
+    body: i.body,
+    impact: i.impact,
+  }));
+  const moneyIssues = translateToMoneyIssues(auditIssues, category);
+
+  // "For the techies" toggle
+  const [showTechnical, setShowTechnical] = useState(false);
+
+  // Issue keys for FixPreview matching
+  const issueKeys = issues.map((i) => i.key ?? i.title.toLowerCase().replace(/\s+/g, '_'));
+
+  // Estimated monthly loss for ProposalCTA
+  const estimatedMonthlyLoss = revenueImpact.hasIssues
+    ? `${revenueImpact.lostRevenueMin.toLocaleString('en-IN')}–${revenueImpact.lostRevenueMax.toLocaleString('en-IN')}`
+    : '';
+
+  // Top 3 issues summary for WhatsApp message
+  const topIssues = moneyIssues.slice(0, 3).map((mi) => mi.plainText);
+
+  // ── End moat setup ──────────────────────────────────────────────
+
   // SEO entries
   const seoChecks = report.seoChecks;
   const seoEntries = seoChecks
@@ -263,11 +313,12 @@ export default function ReportPage({ report, ownerProfile }: ReportPageProps) {
   return (
     <div className="min-h-screen bg-bg-primary hero-gradient grid-bg">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-8">
-        {/* ── 1. Top Badge ── */}
-        <div className="flex justify-center">
+        {/* ── 1. Top Badge + Language Toggle ── */}
+        <div className="flex items-center justify-between">
           <span className="text-text-muted bg-bg-tertiary border border-bg-border rounded-full px-4 py-1.5 text-xs">
             Website Audit Report • Powered by AuditDrop
           </span>
+          <LanguageToggle language={language} onChange={setLanguage} />
         </div>
 
         {/* ── 2. Business Header ── */}
@@ -288,6 +339,9 @@ export default function ReportPage({ report, ownerProfile }: ReportPageProps) {
             <ScreenshotPlaceholder businessUrl={report.businessUrl} businessName={businessName} />
           )}
         </section>
+
+        {/* ── 2b. Competitor Hero (Phase 3: Feature 1) ── */}
+        <CompetitorHero verdicts={competitorVerdicts} />
 
         {/* ── 3. Revenue Impact Banner ── */}
         <section>
@@ -368,27 +422,62 @@ export default function ReportPage({ report, ownerProfile }: ReportPageProps) {
           {issues.length === 0 ? (
             <div className="glass-card rounded-xl p-6 text-center">
               <p className="text-status-good font-medium">
-                🎉 No critical issues found!
+                🎉 {t('report.verdict.good', language)}
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {issues.map((issue, index) => (
-                <IssueCard
-                  key={index}
-                  icon={issue.icon}
-                  title={issue.title}
-                  body={issue.body}
-                  impact={issue.impact as 'High' | 'Medium' | 'Low'}
-                  fixTime={issue.fixTime}
-                  fixCost={issue.fixCost}
-                  fixDifficulty={issue.fixDifficulty}
-                  fixDescription={issue.fixDescription}
-                />
-              ))}
-            </div>
+            <>
+              {/* Money-first view (Phase 3: Feature 2) */}
+              <div className="space-y-3">
+                {moneyIssues.map((mi) => (
+                  <div key={mi.key} className="glass-card rounded-xl p-4 border-l-4 border-l-transparent" style={{
+                    borderLeftColor: mi.severity === 'critical' ? 'var(--color-status-critical)' : mi.severity === 'warning' ? 'var(--color-brand-amber)' : 'var(--color-bg-navy-border)',
+                  }}>
+                    <p className="text-sm font-semibold text-text-primary">
+                      {mi.plainText}
+                    </p>
+                    <p className="text-sm text-text-secondary mt-1">
+                      {mi.consequence}
+                    </p>
+                    <p className="text-xs font-medium text-brand-amber mt-2">
+                      {mi.monthlyImpact}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              {/* "For the techies" toggle */}
+              <button
+                onClick={() => setShowTechnical(!showTechnical)}
+                className="mt-4 text-sm text-text-muted hover:text-text-secondary transition-colors cursor-pointer flex items-center gap-1.5"
+              >
+                <span>{showTechnical ? '▼' : '▶'}</span>
+                For the techies 🔧
+              </button>
+
+              {showTechnical && (
+                <div className="space-y-4 mt-3">
+                  {issues.map((issue, index) => (
+                    <IssueCard
+                      key={index}
+                      icon={issue.icon}
+                      title={issue.title}
+                      body={issue.body}
+                      impact={issue.impact as 'High' | 'Medium' | 'Low'}
+                      fixTime={issue.fixTime}
+                      fixCost={issue.fixCost}
+                      fixDifficulty={issue.fixDifficulty}
+                      fixDescription={issue.fixDescription}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </section>
+
+        {/* ── 6b. Fix Preview (Phase 3: Feature 4) ── */}
+        <FixPreview issueKeys={issueKeys} />
 
         {/* ── 7. SEO Health ── */}
         {seoChecks && seoEntries.length > 0 && (
@@ -514,45 +603,51 @@ export default function ReportPage({ report, ownerProfile }: ReportPageProps) {
           </section>
         )}
 
-        {/* ── 9. CTA Box — always renders ── */}
-        <section>
-          <div className="bg-bg-secondary border-2 border-brand-primary/30 rounded-xl p-6 sm:p-8 text-center">
-            <h3 className="text-xl font-bold text-text-primary">
-              These issues are fixable.
-            </h3>
-            <p className="text-text-secondary mt-2">
-              {ctaDisplayName} can help improve your website.
-            </p>
+        {/* ── 9. Enhanced CTA (Phase 3: Feature 5) ── */}
+        <ProposalCTA
+          report={{
+            id: report.id,
+            uid: report.userId,
+            url: report.businessUrl,
+            businessName: businessName,
+            screenshotUrl: report.screenshotUrl,
+            mobileScore: displayMobileScore,
+            desktopScore: displayDesktopScore,
+            metrics: report.metrics,
+            issues: auditIssues,
+            ownerProfile: {
+              displayName: ownerProfile?.displayName || '',
+              ctaUrl: ownerProfile?.ctaUrl || '',
+              ctaLabel: ownerProfile?.ctaLabel || 'Book a Free Call',
+            },
+            views: report.viewCount,
+            lastViewedAt: null,
+            createdAt: '',
+          }}
+          ownerProfile={ownerProfile ? {
+            displayName: ownerProfile.displayName,
+            ctaUrl: ownerProfile.ctaUrl,
+            ctaLabel: ownerProfile.ctaLabel,
+            whatsappNumber: (ownerProfile as Record<string, unknown>).whatsappNumber as string | undefined,
+            useWhatsApp: (ownerProfile as Record<string, unknown>).useWhatsApp as boolean | undefined,
+          } : null}
+          estimatedMonthlyLoss={estimatedMonthlyLoss}
+          topIssues={topIssues}
+        />
 
-            {ctaUrl ? (
-              <a
-                href={ctaUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 mt-5 bg-brand-primary hover:bg-brand-primary-hover text-white rounded-lg px-8 py-3 text-lg font-semibold transition-colors"
-              >
-                {ctaLabel}
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M17 8l4 4m0 0l-4 4m4-4H3"
-                  />
-                </svg>
-              </a>
-            ) : (
-              <p className="mt-5 text-text-muted text-sm">
-                Contact me to fix these issues
+        {/* Fallback: simple CTA when ProposalCTA has no data */}
+        {!ownerProfile && (
+          <section>
+            <div className="bg-bg-secondary border-2 border-brand-primary/30 rounded-xl p-6 sm:p-8 text-center">
+              <h3 className="text-xl font-bold text-text-primary">
+                These issues are fixable.
+              </h3>
+              <p className="text-text-secondary mt-2">
+                Contact a web developer to improve your website.
               </p>
-            )}
-          </div>
-        </section>
+            </div>
+          </section>
+        )}
 
         {/* ── 10. Footer ── */}
         <footer className="text-center text-text-muted text-xs py-8">
@@ -561,4 +656,58 @@ export default function ReportPage({ report, ownerProfile }: ReportPageProps) {
       </div>
     </div>
   );
+}
+
+// ---------------------------------------------------------------------------
+// Helpers for Phase 3 wiring
+// ---------------------------------------------------------------------------
+
+import type { Issue } from '@/lib/reportUtils';
+import type { CompetitorData } from '@/lib/competitorFraming';
+
+/**
+ * Adapts ReportPage props into the shape needed by generateCompetitorVerdicts.
+ * This bridges the component's flat prop type to the Report & { competitors } union.
+ */
+function buildReportForFraming(
+  report: ReportPageProps['report'],
+  issues: Issue[],
+  mobileScore: number | null,
+  desktopScore: number | null,
+): Report & { competitors?: CompetitorData[] } {
+  const auditIssues: AuditIssue[] = issues.map((i) => ({
+    icon: i.icon,
+    title: i.title,
+    body: i.body,
+    impact: i.impact,
+  }));
+
+  return {
+    id: report.id,
+    uid: report.userId,
+    url: report.businessUrl,
+    businessName: report.businessName,
+    screenshotUrl: report.screenshotUrl,
+    mobileScore,
+    desktopScore,
+    metrics: report.metrics,
+    issues: auditIssues,
+    ownerProfile: {
+      displayName: '',
+      ctaUrl: '',
+      ctaLabel: '',
+    },
+    views: report.viewCount,
+    lastViewedAt: null,
+    createdAt: '',
+    businessCategory: report.businessCategory as BusinessCategory | undefined,
+    gbpAudit: report.gbpAudit ? {
+      ...report.gbpAudit,
+      issues: report.gbpAudit.issues.map((i) => ({
+        ...i,
+        impact: i.impact as 'High' | 'Medium' | 'Low',
+      })),
+    } : undefined,
+    competitors: report.competitors as CompetitorData[] | undefined,
+  };
 }
