@@ -1,454 +1,147 @@
 @import "tailwindcss";
 
-/* ─────────────────────────────────────────────────────────────
-   Design Tokens — Tailwind v4 @theme Directive
-   Maps 1:1 with src/styles/tokens.ts
-   ───────────────────────────────────────────────────────────── */
 @theme {
-  /* ── Background Colors ── */
-  --color-bg-primary: #0A0A0F;
-  --color-bg-secondary: #111118;
-  --color-bg-tertiary: #1A1A24;
-  --color-bg-border: #2A2A3A;
-  --color-bg-border-hover: #3A3A4F;
+  --color-on-primary-fixed: #0f0069;
+  --color-inverse-primary: #c3c0ff;
+  --color-on-secondary-container: #656464;
+  --color-inverse-on-surface: #f0f1f3;
+  --color-tertiary: #7e3000;
+  --color-on-error-container: #93000a;
+  --color-surface-variant: #e1e2e4;
+  --color-on-secondary-fixed: #1c1b1b;
+  --color-error-container: #ffdad6;
+  --color-background: #F7F8FA; /* Tinted neutral canvas */
+  --color-tertiary-fixed: #ffdbcc;
+  --color-surface-dim: #d9dadc;
+  --color-surface-container-high: #e7e8ea;
+  --color-primary-container: #4f46e5;
+  --color-on-error: #ffffff;
+  --color-surface-container-highest: #e1e2e4;
+  --color-secondary-fixed-dim: #c9c6c5;
+  --color-surface-container: #edeef0;
+  --color-on-surface-variant: #464555;
+  --color-on-primary-fixed-variant: #3323cc;
+  --color-surface-tint: #4d44e3;
+  --color-on-tertiary-fixed-variant: #7b2f00;
+  --color-on-tertiary-container: #ffd2be;
+  --color-on-tertiary: #ffffff;
+  --color-outline-variant: #c7c4d8;
+  --color-secondary-container: #e5e2e1;
+  --color-primary-fixed: #e2dfff;
+  --color-surface: #f8f9fb;
+  --color-secondary: #5f5e5e;
+  --color-surface-bright: #f8f9fb;
+  --color-on-tertiary-fixed: #351000;
+  --color-on-secondary-fixed-variant: #474646;
+  --color-on-primary-container: #dad7ff;
+  --color-surface-container-low: #f2f4f6;
+  --color-inverse-surface: #2e3132;
+  --color-on-primary: #ffffff;
+  --color-tertiary-container: #a44100;
+  --color-secondary-fixed: #e5e2e1;
+  --color-on-surface: #191c1e;
+  --color-primary-fixed-dim: #c3c0ff;
+  --color-outline: #777587;
+  --color-on-secondary: #ffffff;
+  --color-tertiary-fixed-dim: #ffb695;
+  --color-surface-container-lowest: #ffffff; /* Pure white cards */
+  --color-error: #ba1a1a;
+  --color-primary: #3525cd;
+  --color-on-background: #191c1e;
 
-  /* ── Brand Colors ── */
-  --color-brand-primary: #7C3AED;
-  --color-brand-primary-hover: #6D28D9;
-  --color-brand-secondary: #A855F7;
-  --color-brand-glow: rgba(124, 58, 237, 0.15);
+  /* Border Radius */
+  --radius-DEFAULT: 0.125rem;
+  --radius-lg: 0.25rem;
+  --radius-xl: 0.5rem;
+  --radius-full: 0.75rem;
 
-  /* ── Status Colors ── */
-  --color-status-critical: #EF4444;
-  --color-status-critical-bg: rgba(239, 68, 68, 0.1);
-  --color-status-warning: #F59E0B;
-  --color-status-warning-bg: rgba(245, 158, 11, 0.1);
-  --color-status-good: #10B981;
-  --color-status-good-bg: rgba(16, 185, 129, 0.1);
-  --color-status-excellent: #06B6D4;
-  --color-status-excellent-bg: rgba(6, 182, 212, 0.1);
+  /* Spacing */
+  --spacing-base: 4px;
+  --spacing-md: 16px;
+  --spacing-sm: 8px;
+  --spacing-margin: 24px;
+  --spacing-xl: 32px;
+  --spacing-gutter: 16px;
+  --spacing-2xl: 48px;
+  --spacing-lg: 24px;
+  --spacing-xs: 4px;
 
-  /* ── Text Colors ── */
-  --color-text-primary: #F1F5F9;
-  --color-text-secondary: #94A3B8;
-  --color-text-muted: #475569;
-
-  /* ── Border Radius ── */
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
-  --radius-full: 9999px;
-
-  /* ── Shadows ── */
-  --shadow-card: 0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3);
-  --shadow-elevated: 0 4px 24px rgba(0,0,0,0.5);
-  --shadow-glow: 0 0 20px rgba(124, 58, 237, 0.3);
-
-  /* ── Font Family ── */
-  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-
-  /* ══════════════════════════════════════════════════════════════
-     Brand v2 Tokens — Teal/Amber Growth-Tool Identity
-     ADDITIVE — does NOT replace existing tokens above
-     ══════════════════════════════════════════════════════════════ */
-
-  /* ── Brand v2 Colors ── */
-  --color-brand-teal: #0F766E;
-  --color-brand-teal-hover: #0D9488;
-  --color-brand-teal-light: #14B8A6;
-  --color-brand-teal-glow: rgba(15, 118, 110, 0.15);
-  --color-brand-teal-subtle: rgba(15, 118, 110, 0.08);
-  --color-brand-amber: #F59E0B;
-  --color-brand-amber-hover: #D97706;
-  --color-brand-amber-light: #FCD34D;
-  --color-brand-amber-glow: rgba(245, 158, 11, 0.15);
-
-  /* ── Brand v2 Backgrounds ── */
-  --color-bg-deep: #0C1222;
-  --color-bg-card: #111827;
-  --color-bg-elevated: #1E293B;
-  --color-bg-navy-border: #1E3A5F;
-
-  /* ── WhatsApp Contextual ── */
-  --color-whatsapp-green: #25D366;
-  --color-whatsapp-dark: #075E54;
-
-  /* ── Brand v2 Shadows ── */
-  --shadow-teal-glow: 0 0 20px rgba(15, 118, 110, 0.3);
-  --shadow-teal-glow-strong: 0 0 30px rgba(15, 118, 110, 0.4), 0 0 60px rgba(15, 118, 110, 0.1);
-  --shadow-amber-glow: 0 0 20px rgba(245, 158, 11, 0.3);
-
-  /* ── Font Family (Display) ── */
-  --font-display: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  /* Typography */
+  --font-body-lg: "Inter", sans-serif;
+  --font-display-lg: "Hanken Grotesk", sans-serif;
+  --font-label-sm: "JetBrains Mono", monospace;
+  --font-body-md: "Inter", sans-serif;
+  --font-headline-lg-mobile: "Hanken Grotesk", sans-serif;
+  --font-headline-lg: "Hanken Grotesk", sans-serif;
+  --font-headline-md: "Hanken Grotesk", sans-serif;
+  --font-label-md: "JetBrains Mono", monospace;
+  --font-headline-sm: "Hanken Grotesk", sans-serif;
 }
 
-/* ─────────────────────────────────────────────────────────────
-   Base Styles
-   ───────────────────────────────────────────────────────────── */
+@utility text-body-lg {
+  font-size: 16px;
+  line-height: 1.6;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+@utility text-display-lg {
+  font-size: 48px;
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+  font-weight: 700;
+}
+@utility text-label-sm {
+  font-size: 10px;
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+  font-weight: 500;
+}
+@utility text-body-md {
+  font-size: 14px;
+  line-height: 1.5;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+@utility text-headline-lg-mobile {
+  font-size: 28px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-weight: 600;
+}
+@utility text-headline-lg {
+  font-size: 32px;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  font-weight: 600;
+}
+@utility text-headline-md {
+  font-size: 24px;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  font-weight: 600;
+}
+@utility text-label-md {
+  font-size: 12px;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  font-weight: 500;
+}
+@utility text-headline-sm {
+  font-size: 20px;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  font-weight: 600;
+}
+
+@utility bento-shadow {
+  box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.03);
+}
+
+@utility material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
 html {
   scroll-behavior: smooth;
-  color-scheme: dark;
-}
-
-body {
-  background-color: var(--color-bg-primary);
-  color: var(--color-text-primary);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-/* ─────────────────────────────────────────────────────────────
-   Custom Scrollbar
-   ───────────────────────────────────────────────────────────── */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--color-bg-primary);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--color-bg-border);
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-bg-border-hover);
-}
-
-/* ─────────────────────────────────────────────────────────────
-   Selection
-   ───────────────────────────────────────────────────────────── */
-::selection {
-  background-color: var(--color-brand-glow);
-  color: var(--color-text-primary);
-}
-
-/* ─────────────────────────────────────────────────────────────
-   Animations
-   ───────────────────────────────────────────────────────────── */
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-}
-
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 20px var(--color-brand-glow); }
-  50% { box-shadow: var(--shadow-glow); }
-}
-
-@keyframes score-fill {
-  from { stroke-dashoffset: 283; }
-}
-
-@keyframes skeleton-pulse {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 0.7; }
-}
-
-@keyframes fade-in {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes slide-up {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes toast-in {
-  from { opacity: 0; transform: translateX(100%); }
-  to { opacity: 1; transform: translateX(0); }
-}
-
-@keyframes toast-out {
-  from { opacity: 1; transform: translateX(0); }
-  to { opacity: 0; transform: translateX(100%); }
-}
-
-.animate-shimmer {
-  background: linear-gradient(90deg, transparent 25%, var(--color-brand-glow) 50%, transparent 75%);
-  background-size: 200% 100%;
-  animation: shimmer 2s infinite;
-}
-
-.animate-float {
-  animation: float 3s ease-in-out infinite;
-}
-
-.animate-pulse-glow {
-  animation: pulse-glow 2s ease-in-out infinite;
-}
-
-.animate-score-fill {
-  animation: score-fill 1.5s ease-out forwards;
-}
-
-.animate-skeleton {
-  animation: skeleton-pulse 1.5s ease-in-out infinite;
-}
-
-.animate-fade-in {
-  animation: fade-in 0.15s ease-out;
-}
-
-.animate-slide-up {
-  animation: slide-up 0.2s ease-out;
-}
-
-.animate-toast-in {
-  animation: toast-in 0.3s ease-out;
-}
-
-.animate-toast-out {
-  animation: toast-out 0.2s ease-in forwards;
-}
-
-/* ─────────────────────────────────────────────────────────────
-   Focus Styles
-   ───────────────────────────────────────────────────────────── */
-*:focus-visible {
-  outline: 2px solid var(--color-brand-primary);
-  outline-offset: 2px;
-}
-
-*:focus:not(:focus-visible) {
-  outline: none;
-}
-
-/* ─────────────────────────────────────────────────────────────
-   Premium Visual Effects
-   ───────────────────────────────────────────────────────────── */
-
-/* Animated gradient border — rotate conic gradient via CSS Houdini */
-@property --angle {
-  syntax: '<angle>';
-  initial-value: 0deg;
-  inherits: false;
-}
-
-@keyframes gradient-rotate {
-  to { --angle: 360deg; }
-}
-
-.gradient-border {
-  position: relative;
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-}
-
-.gradient-border::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1px;
-  background: conic-gradient(
-    from var(--angle),
-    var(--color-brand-primary),
-    var(--color-brand-secondary),
-    var(--color-status-excellent),
-    var(--color-brand-primary)
-  );
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  animation: gradient-rotate 4s linear infinite;
-  pointer-events: none;
-  z-index: 1;
-}
-
-/* Grid background overlay */
-.grid-bg {
-  background-image:
-    linear-gradient(rgba(124, 58, 237, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(124, 58, 237, 0.03) 1px, transparent 1px);
-  background-size: 40px 40px;
-}
-
-/* Noise texture overlay */
-.noise-bg {
-  position: relative;
-}
-.noise-bg::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  opacity: 0.03;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  pointer-events: none;
-  border-radius: inherit;
-  z-index: 0;
-}
-
-/* Shimmer CTA effect */
-@keyframes shimmer-slide {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-}
-
-.shimmer-btn {
-  position: relative;
-  overflow: hidden;
-}
-
-.shimmer-btn::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    105deg,
-    transparent 30%,
-    rgba(255, 255, 255, 0.08) 45%,
-    rgba(255, 255, 255, 0.12) 50%,
-    rgba(255, 255, 255, 0.08) 55%,
-    transparent 70%
-  );
-  animation: shimmer-slide 3s ease-in-out infinite;
-  pointer-events: none;
-}
-
-/* Score glow classes */
-.score-glow-green {
-  filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.4));
-}
-
-.score-glow-amber {
-  filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.4));
-}
-
-.score-glow-red {
-  filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.4));
-}
-
-/* Hero blob float */
-@keyframes blob-float {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  25% { transform: translate(20px, -30px) scale(1.05); }
-  50% { transform: translate(-10px, 15px) scale(0.95); }
-  75% { transform: translate(15px, 20px) scale(1.02); }
-}
-
-.animate-blob {
-  animation: blob-float 8s ease-in-out infinite;
-}
-
-.animate-blob-delay {
-  animation: blob-float 8s ease-in-out infinite;
-  animation-delay: 2s;
-}
-
-/* Confetti animation for "Won" status */
-@keyframes confetti-burst {
-  0% { transform: scale(0); opacity: 1; }
-  50% { transform: scale(1.3); opacity: 0.8; }
-  100% { transform: scale(1.5); opacity: 0; }
-}
-
-.animate-confetti {
-  animation: confetti-burst 0.6s ease-out forwards;
-}
-
-/* Count-up number animation */
-@keyframes count-fade-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.animate-count-in {
-  animation: count-fade-in 0.5s ease-out;
-}
-
-/* Glassmorphism with @supports */
-@supports (backdrop-filter: blur(0)) {
-  .glass {
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    background-color: rgba(17, 17, 24, 0.7);
-    border: 1px solid rgba(42, 42, 58, 0.5);
-  }
-
-  .glass-card {
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    background-color: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(42, 42, 58, 0.4);
-  }
-
-  .glass-nav {
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    background-color: rgba(17, 17, 24, 0.8);
-  }
-}
-
-/* Fallback for browsers without backdrop-filter */
-@supports not (backdrop-filter: blur(0)) {
-  .glass,
-  .glass-card {
-    background-color: rgba(17, 17, 24, 0.95);
-    border: 1px solid rgba(42, 42, 58, 0.6);
-  }
-
-  .glass-nav {
-    background-color: rgba(17, 17, 24, 0.98);
-  }
-}
-
-/* Radial gradient hero background */
-.hero-gradient {
-  background:
-    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(124, 58, 237, 0.15), transparent 70%),
-    radial-gradient(ellipse 60% 40% at 80% 50%, rgba(168, 85, 247, 0.08), transparent 60%),
-    var(--color-bg-primary);
-}
-
-/* WhatsApp chat typing dots */
-@keyframes typing-dot {
-  0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
-  30% { opacity: 1; transform: translateY(-3px); }
-}
-
-.typing-dot:nth-child(1) { animation: typing-dot 1.4s ease-in-out infinite; }
-.typing-dot:nth-child(2) { animation: typing-dot 1.4s ease-in-out 0.2s infinite; }
-.typing-dot:nth-child(3) { animation: typing-dot 1.4s ease-in-out 0.4s infinite; }
-
-/* Underline grow for nav links */
-.underline-grow {
-  position: relative;
-}
-
-.underline-grow::after {
-  content: '';
-  position: absolute;
-  bottom: -2px;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background: var(--color-brand-primary);
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform 0.3s ease;
-}
-
-.underline-grow:hover::after {
-  transform: scaleX(1);
-}
-
-/* Progress bar fill */
-@keyframes progress-fill {
-  from { width: 0%; }
-}
-
-.animate-progress-fill {
-  animation: progress-fill 1s ease-out forwards;
 }

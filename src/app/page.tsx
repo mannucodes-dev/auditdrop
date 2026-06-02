@@ -1,427 +1,589 @@
+
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect } from 'react';
 import Link from 'next/link';
-import dynamic from 'next/dynamic';
-import { motion, useInView } from 'framer-motion';
-import { BentoGrid, BentoCard } from '@/components/ui/BentoGrid';
-import { GlassCard } from '@/components/ui/GlassCard';
 
-// Lazy-load TiltCard — decorative, not needed for initial render
-const TiltCard = dynamic(
-  () => import('@/components/ui/TiltCard').then(m => ({ default: m.TiltCard })),
-  { ssr: false }
-);
-
-// ─── Animated Counter ────────────────────────────────────────
-function Counter({ target, suffix = '' }: { target: number; suffix?: string }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, { once: true, margin: '-50px' });
-  const [count, setCount] = useState(0);
+export default function LandingPage() {
+  const scrollTo = (id: string) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
   useEffect(() => {
-    if (!inView) return;
-    const duration = 1400;
-    const steps = 40;
-    const increment = target / steps;
-    let current = 0;
-    const timer = setInterval(() => {
-      current += increment;
-      if (current >= target) {
-        setCount(target);
-        clearInterval(timer);
-      } else {
-        setCount(Math.floor(current));
-      }
-    }, duration / steps);
-    return () => clearInterval(timer);
-  }, [inView, target]);
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) return;
+
+    const cards = document.querySelectorAll('.bento-card');
+    const seoCard = document.getElementById('seo-card');
+    const progressRing = document.querySelector('.progress-ring-circle');
+
+    const observerOptions = {
+        root: null,
+        rootMargin: '0px',
+        threshold: 0.1
+    };
+
+    const cardObserver = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('visible');
+                
+                if (entry.target === seoCard && progressRing) {
+                    setTimeout(() => {
+                        progressRing.classList.add('animate');
+                    }, 300);
+                }
+                observer.unobserve(entry.target);
+            }
+        });
+    }, observerOptions);
+
+    cards.forEach(card => {
+        // Only observe cards that should animate in (from Features Grid)
+        if (card.classList.contains('animated-card')) {
+             cardObserver.observe(card);
+        }
+    });
+  }, []);
 
   return (
-    <span ref={ref} className="tabular-nums">
-      {inView ? count.toLocaleString('en-IN') : '0'}{suffix}
-    </span>
-  );
-}
+    <>
+      <style dangerouslySetInnerHTML={{ __html: `
+        .bento-card {
+            background-color: #ffffff;
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.03);
+            transition: all 0.3s ease;
+        }
 
-// ─── WhatsApp Phone Mockup ───────────────────────────────────
-const chatMessages = [
-  { from: 'sent', text: 'Hi! I found some issues on your website that are costing you leads 📊', delay: 0.6 },
-  { from: 'sent', text: 'I made a quick audit report – check it out 👇', delay: 1.2 },
-  { from: 'sent', text: 'auditdrop.com/r/demo-report', delay: 1.8, isLink: true },
-  { from: 'received', text: 'Wow, this is very detailed! 🔥', delay: 3.0 },
-  { from: 'received', text: 'Can you fix these issues for us?', delay: 3.8 },
-];
+        .animated-card {
+            opacity: 0;
+            transform: translateY(20px);
+        }
 
-function PhoneMockup() {
-  return (
-    <div className="relative w-[280px] sm:w-[300px]">
-      {/* Phone frame */}
-      <div className="rounded-[2.5rem] border-2 border-bg-border-hover bg-bg-secondary p-3 shadow-elevated">
-        {/* Notch */}
-        <div className="mx-auto w-24 h-5 bg-bg-primary rounded-full mb-3" />
+        .animated-card.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
 
-        {/* WhatsApp header */}
-        <div className="bg-[#075E54] rounded-t-xl px-4 py-3 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-[#25D366] flex items-center justify-center text-white text-xs font-bold">
-            B
-          </div>
-          <div>
-            <p className="text-white text-sm font-medium">Business Owner</p>
-            <p className="text-green-200 text-xs">online</p>
-          </div>
+        .bento-card:hover {
+            border-color: rgba(0, 0, 0, 0.12);
+            box-shadow: 0px 12px 32px rgba(0, 0, 0, 0.08);
+            transform: translateY(-4px);
+        }
+
+        .code-pattern {
+            background-image: radial-gradient(rgba(0,0,0,0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        .micro-card {
+            background-color: #FFFFFF;
+            border: 1px solid rgba(0,0,0,0.06);
+            box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s ease;
+        }
+
+        .micro-card:hover {
+            transform: translateY(-2px);
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        .shimmer-text {
+            background: linear-gradient(90deg, currentColor 25%, rgba(255,255,255,0.8) 50%, currentColor 75%);
+            background-size: 200% 100%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: shimmer 3s infinite linear;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+
+        .float-anim {
+            animation: float 4s ease-in-out infinite;
+        }
+
+        @keyframes float-subtle {
+            0%, 100% { transform: translateY(0) translateX(0); }
+            50% { transform: translateY(-4px) translateX(2px); }
+        }
+
+        .float-subtle-anim {
+            animation: float-subtle 6s ease-in-out infinite;
+        }
+
+        @keyframes progress-fill {
+            from { stroke-dashoffset: 251; }
+            to { stroke-dashoffset: var(--target-offset); }
+        }
+
+        .progress-ring-circle.animate {
+            animation: progress-fill 1.5s ease-out forwards;
+        }
+        
+        @media (prefers-reduced-motion: reduce) {
+            .bento-card, .shimmer-text, .float-anim, .float-subtle-anim, .progress-ring-circle.animate {
+                animation: none !important;
+                transition: none !important;
+                opacity: 1 !important;
+                transform: none !important;
+            }
+            .bento-card:hover {
+                transform: none;
+            }
+        }
+      ` }} />
+
+      {/* TopNavBar */}
+      <nav className="fixed top-0 w-full z-50 flex justify-between items-center px-margin py-md max-w-7xl mx-auto left-0 right-0 bg-background/80 backdrop-blur-md border-b border-surface-variant transition-all">
+        <div className="flex items-center gap-md">
+          <span className="font-headline-sm text-headline-sm font-bold text-on-surface tracking-tight">AuditDrop</span>
         </div>
-
-        {/* Chat area */}
-        <div className="bg-[#0B141A] px-3 py-4 space-y-2 min-h-[280px] rounded-b-xl overflow-hidden">
-          {chatMessages.map((msg, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 10, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ delay: msg.delay, duration: 0.3, ease: 'easeOut' }}
-              className={`flex ${msg.from === 'sent' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div
-                className={`max-w-[85%] rounded-lg px-3 py-2 text-[13px] leading-snug ${
-                  msg.from === 'sent'
-                    ? 'bg-[#005C4B] text-white rounded-tr-none'
-                    : 'bg-[#1F2C33] text-gray-100 rounded-tl-none'
-                }`}
-              >
-                {msg.isLink ? (
-                  <span className="text-blue-300 underline">{msg.text}</span>
-                ) : (
-                  msg.text
-                )}
-              </div>
-            </motion.div>
-          ))}
-
-          {/* Typing indicator */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 4.5 }}
-            className="flex justify-start"
-          >
-            <div className="bg-[#1F2C33] rounded-lg px-4 py-3 rounded-tl-none flex gap-1">
-              <div className="w-2 h-2 rounded-full bg-gray-400 typing-dot" />
-              <div className="w-2 h-2 rounded-full bg-gray-400 typing-dot" />
-              <div className="w-2 h-2 rounded-full bg-gray-400 typing-dot" />
-            </div>
-          </motion.div>
+        <div className="hidden md:flex items-center gap-margin">
+          <button onClick={() => scrollTo('how-it-works')} className="font-body-md text-body-md text-secondary hover:text-on-surface transition-colors cursor-pointer">How it Works</button>
+          <button onClick={() => scrollTo('features')} className="font-body-md text-body-md text-secondary hover:text-on-surface transition-colors cursor-pointer">Features</button>
+          <button onClick={() => scrollTo('comparison')} className="font-body-md text-body-md text-secondary hover:text-on-surface transition-colors cursor-pointer">Comparison</button>
         </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Section Wrapper ─────────────────────────────────────────
-function Section({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: '-80px' });
-
-  return (
-    <motion.section
-      ref={ref}
-      initial={{ opacity: 0, y: 30 }}
-      animate={inView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.6, ease: 'easeOut' }}
-      className={className}
-    >
-      {children}
-    </motion.section>
-  );
-}
-
-// ─── Page ────────────────────────────────────────────────────
-export default function LandingPage() {
-  return (
-    <div className="min-h-screen bg-bg-primary hero-gradient grid-bg">
-      {/* ── Nav ── */}
-      <nav className="sticky top-0 z-50 glass-nav border-b border-bg-border">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-brand-primary shadow-md shadow-brand-primary/20 group-hover:shadow-brand-primary/40 transition-shadow">
-              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
-              </svg>
-            </div>
-            <span className="text-lg font-bold text-brand-secondary">AuditDrop</span>
+        <div className="flex items-center gap-sm">
+          <Link href="/login" className="bg-on-surface text-surface-container-lowest px-md py-sm rounded-DEFAULT font-label-md text-label-md hover:bg-on-surface-variant transition-colors">
+            Login
           </Link>
-
-          <div className="flex items-center gap-3">
-            <Link href="/login" className="text-sm text-text-secondary hover:text-text-primary transition-colors underline-grow px-3 py-1.5">
-              Log in
-            </Link>
-            <Link
-              href="/login"
-              className="shimmer-btn bg-brand-primary hover:bg-brand-primary-hover text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-all hover:-translate-y-0.5 active:translate-y-0 shadow-glow"
-            >
-              Get Started Free
-            </Link>
-          </div>
         </div>
       </nav>
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6">
-        {/* ═══════════════════ HERO ═══════════════════ */}
-        <section className="relative pt-20 sm:pt-28 pb-20 overflow-hidden">
-          {/* Animated blobs */}
-          <div className="absolute -top-20 -left-20 w-72 h-72 bg-brand-primary/10 rounded-full blur-3xl animate-blob" />
-          <div className="absolute -bottom-20 -right-20 w-96 h-96 bg-brand-secondary/8 rounded-full blur-3xl animate-blob-delay" />
-
-          <div className="relative z-10 flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
-            {/* Left: Copy */}
-            <div className="flex-1 text-center lg:text-left">
-              {/* Pill badge */}
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="inline-flex items-center gap-2 bg-brand-glow border border-brand-primary/20 rounded-full px-4 py-1.5 text-xs text-brand-secondary mb-6"
-              >
-                <span>⚡</span>
-                <span>Built for Indian freelancers & agencies</span>
-              </motion.div>
-
-              <motion.h1
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.15 }}
-                className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight"
-              >
-                <span className="text-text-primary">Turn any URL into a</span>{' '}
-                <span className="bg-gradient-to-r from-brand-primary via-brand-secondary to-status-excellent bg-clip-text text-transparent">
-                  client-winning
-                </span>{' '}
-                <span className="text-text-primary">audit report</span>
-              </motion.h1>
-
-              <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.3 }}
-                className="mt-5 text-lg text-text-secondary max-w-lg mx-auto lg:mx-0"
-              >
-                Generate professional website audits in 30 seconds. Share on WhatsApp. Convert cold prospects into paying clients.
-              </motion.p>
-
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.45 }}
-                className="mt-8 flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start"
-              >
-                <Link
-                  href="/login"
-                  className="shimmer-btn bg-brand-primary hover:bg-brand-primary-hover text-white font-semibold px-8 py-3.5 rounded-xl text-base transition-all hover:-translate-y-0.5 active:translate-y-0 shadow-glow"
-                >
-                  Start Auditing — It&apos;s Free
+      <main className="pt-32 pb-2xl">
+        {/* Section 1: Hero (Asymmetric) */}
+        <section className="max-w-7xl mx-auto px-margin mb-2xl">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-gutter items-center">
+            {/* Left Content (Span 7) */}
+            <div className="md:col-span-7 flex flex-col gap-lg pr-lg">
+              <div className="flex flex-col gap-xs font-label-sm text-label-sm text-secondary uppercase tracking-widest border-l-2 border-surface-variant pl-md">
+                <span>⚡️ 10,000+ AGENCIES SECURED</span>
+                <span>📈 +87% REPLY RATE AVERAGE</span>
+                <span>💸 PRECISION AUDITING FOR MODERN TEAMS</span>
+              </div>
+              <h1 className="font-display-lg text-display-lg text-on-surface leading-tight">
+                Turn any URL into a <br/>
+                <span className="text-primary-container">client-winning</span> <br/>
+                audit report
+              </h1>
+              <div className="flex flex-col sm:flex-row gap-md mt-sm">
+                <Link href="/login" className="bg-on-surface text-surface-container-lowest px-lg py-md rounded-DEFAULT font-label-md text-label-md hover:bg-on-surface-variant transition-colors flex items-center justify-center gap-sm">
+                  Start Auditing — It's Free
+                  <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
                 </Link>
-                <Link
-                  href="/r/demo"
-                  className="text-text-secondary hover:text-brand-secondary text-sm font-medium transition-colors flex items-center gap-1"
-                >
+                <button className="bg-transparent border border-outline-variant text-primary-container px-lg py-md rounded-DEFAULT font-label-md text-label-md hover:bg-surface-container transition-colors flex items-center justify-center">
                   See a sample report
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" />
-                  </svg>
-                </Link>
-              </motion.div>
+                </button>
+              </div>
             </div>
-
-            {/* Right: Phone Mockup */}
-            <motion.div
-              initial={{ opacity: 0, x: 40, rotate: 2 }}
-              animate={{ opacity: 1, x: 0, rotate: 0 }}
-              transition={{ duration: 0.8, delay: 0.4, ease: 'easeOut' }}
-              className="flex-shrink-0"
-            >
-              <PhoneMockup />
-            </motion.div>
-          </div>
-        </section>
-
-        {/* ═══════════════════ HOW IT WORKS ═══════════════════ */}
-        <Section className="py-20">
-          <div className="text-center mb-14">
-            <h2 className="text-3xl sm:text-4xl font-bold text-text-primary">
-              Three steps to your next client
-            </h2>
-            <p className="mt-3 text-text-secondary">From URL to signed deal in under 5 minutes.</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
-            {/* Connection line (desktop) */}
-            <div className="hidden md:block absolute top-12 left-[16.5%] right-[16.5%] h-[2px] bg-gradient-to-r from-brand-primary via-brand-secondary to-status-excellent" />
-
-            {[
-              { step: '01', icon: '🔗', title: 'Paste a URL', desc: 'Enter any business website. We run mobile, desktop, SEO, and Google Business checks automatically.' },
-              { step: '02', icon: '📊', title: 'Get the report', desc: 'In 30 seconds, get a branded audit with scores, revenue impact, and a clear issue list.' },
-              { step: '03', icon: '💬', title: 'Share & convert', desc: 'Share via WhatsApp with one click. The prospect sees issues + your contact CTA. You close the deal.' },
-            ].map((item, i) => (
-              <motion.div
-                key={item.step}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: '-40px' }}
-                transition={{ delay: i * 0.15, duration: 0.5 }}
-                className="relative text-center"
-              >
-                {/* Step circle */}
-                <div className="w-24 h-24 mx-auto rounded-2xl glass-card flex items-center justify-center text-4xl mb-5 relative z-10">
-                  {item.icon}
+            {/* Right Bento Column (Span 5) */}
+            <div className="md:col-span-5 flex flex-col gap-gutter mt-xl md:mt-0 relative">
+              <div className="bento-card p-margin flex flex-col gap-sm transform transition-transform hover:-translate-y-1 z-10 rounded-xl">
+                <label className="font-label-sm text-label-sm text-secondary">TARGET URL</label>
+                <div className="flex items-center border border-surface-variant rounded-DEFAULT overflow-hidden focus-within:border-primary-container transition-colors">
+                  <span className="material-symbols-outlined text-secondary pl-sm text-[18px]">link</span>
+                  <input className="w-full bg-transparent border-none font-body-md text-body-md text-on-surface py-sm px-sm focus:ring-0 outline-none" readOnly type="text" value="https://your-client.com"/>
+                  <button className="bg-surface-container text-on-surface px-md py-sm font-label-sm text-label-sm hover:bg-surface-variant transition-colors border-l border-surface-variant">
+                    Scan
+                  </button>
                 </div>
-                <h3 className="text-lg font-semibold text-text-primary mb-2">
-                  <span className="text-brand-secondary mr-1">{item.step}.</span>
-                  {item.title}
-                </h3>
-                <p className="text-text-secondary text-sm max-w-xs mx-auto">{item.desc}</p>
-              </motion.div>
-            ))}
-          </div>
-        </Section>
-
-        {/* ═══════════════════ STATS ═══════════════════ */}
-        <Section className="py-16">
-          <GlassCard variant="hero" className="p-8 sm:p-12">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 text-center">
-              {[
-                { value: 1247, suffix: '+', label: 'Reports generated' },
-                { value: 342, suffix: '+', label: 'Prospects contacted' },
-                { value: 87, suffix: '%', label: 'WhatsApp open rate' },
-              ].map((stat, i) => (
-                <motion.div
-                  key={stat.label}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.1, duration: 0.4 }}
-                >
-                  <p className="text-4xl sm:text-5xl font-bold font-[family-name:var(--font-display)] bg-gradient-to-r from-brand-teal to-brand-teal-light bg-clip-text text-transparent">
-                    <Counter target={stat.value} suffix={stat.suffix} />
-                  </p>
-                  <p className="text-text-secondary text-sm mt-2">{stat.label}</p>
-                </motion.div>
-              ))}
-            </div>
-          </GlassCard>
-        </Section>
-
-        {/* ═══════════════════ FEATURE BENTO ═══════════════════ */}
-        <Section className="py-20">
-          <div className="text-center mb-14">
-            <h2 className="text-3xl sm:text-4xl font-bold text-text-primary">
-              Everything you need to close deals
-            </h2>
-            <p className="mt-3 text-text-secondary">Professional audit reports that make prospects say &quot;yes&quot;.</p>
-          </div>
-
-          <BentoGrid columns={6} className="">
-            {[
-              { title: 'Revenue Impact', desc: 'Show prospects exactly how much money their broken website costs them.', icon: '₹', colSpan: 4 as const, accent: 'from-status-critical/10 to-status-warning/10' },
-              { title: 'Mobile + Desktop', desc: 'Google Lighthouse scores for both strategies.', icon: '📱', colSpan: 2 as const, accent: 'from-brand-teal/10 to-brand-teal-light/10' },
-              { title: 'SEO Health', desc: 'Meta tags, headings, structured data — all checked.', icon: '🔍', colSpan: 2 as const, accent: 'from-status-good/10 to-status-excellent/10' },
-              { title: 'Google Business Profile', desc: 'Rating, reviews, and profile completeness audited automatically.', icon: '⭐', colSpan: 4 as const, accent: 'from-brand-amber/10 to-status-good/10' },
-              { title: 'WhatsApp-Ready', desc: 'One-click share with pre-written conversion message.', icon: '💬', colSpan: 3 as const, accent: 'from-whatsapp-green/10 to-brand-teal/10' },
-              { title: 'Prospect CRM', desc: 'Track status: New → Viewed → Contacted → Won.', icon: '📋', colSpan: 3 as const, accent: 'from-brand-teal-light/10 to-status-excellent/10' },
-            ].map((feature, i) => (
-              <BentoCard key={feature.title} colSpan={feature.colSpan} hover>
-                <motion.div
-                  initial={{ opacity: 0, y: 15 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: '-30px' }}
-                  transition={{ delay: i * 0.08, duration: 0.4 }}
-                >
-                  <TiltCard maxTilt={6} scale={1.01}>
-                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${feature.accent} flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform`}>
-                      {feature.icon}
-                    </div>
-                    <h3 className="text-base font-semibold text-text-primary mb-1">{feature.title}</h3>
-                    <p className="text-sm text-text-secondary">{feature.desc}</p>
-                  </TiltCard>
-                </motion.div>
-              </BentoCard>
-            ))}
-          </BentoGrid>
-        </Section>
-
-        {/* ═══════════════════ COMPETITOR CALLOUT ═══════════════════ */}
-        <Section className="py-16">
-          <div className="glass-card rounded-2xl p-8 sm:p-12 text-center">
-            <h2 className="text-2xl sm:text-3xl font-bold text-text-primary mb-3">
-              &quot;Why not just use GTmetrix?&quot;
-            </h2>
-            <p className="text-text-secondary max-w-2xl mx-auto mb-8">
-              GTmetrix is great for developers. AuditDrop is built for <span className="text-brand-secondary font-medium">sales</span>.
-            </p>
-            <div className="overflow-x-auto">
-              <table className="w-full max-w-xl mx-auto text-left text-sm">
-                <thead>
-                  <tr className="border-b border-bg-border">
-                    <th className="pb-3 text-text-muted font-medium">Feature</th>
-                    <th className="pb-3 text-text-muted font-medium text-center">GTmetrix</th>
-                    <th className="pb-3 text-brand-secondary font-medium text-center">AuditDrop</th>
-                  </tr>
-                </thead>
-                <tbody className="text-text-secondary">
-                  {[
-                    ['Revenue impact in ₹', '✗', '✓'],
-                    ['WhatsApp sharing', '✗', '✓'],
-                    ['Prospect CRM', '✗', '✓'],
-                    ['Branded reports', '✗', '✓'],
-                    ['GBP audit', '✗', '✓'],
-                    ['Your CTA on report', '✗', '✓'],
-                  ].map(([feature, gtm, ad]) => (
-                    <tr key={feature as string} className="border-b border-bg-border/50">
-                      <td className="py-3">{feature}</td>
-                      <td className="py-3 text-center text-status-critical">{gtm}</td>
-                      <td className="py-3 text-center text-status-good font-bold">{ad}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </Section>
-
-        {/* ═══════════════════ FINAL CTA ═══════════════════ */}
-        <Section className="py-20 pb-32">
-          <div className="relative gradient-border rounded-2xl">
-            <div className="bg-bg-secondary rounded-2xl p-8 sm:p-14 text-center noise-bg relative z-10">
-              <h2 className="text-3xl sm:text-4xl font-bold text-text-primary relative z-10">
-                Ready to close more clients?
-              </h2>
-              <p className="mt-4 text-text-secondary max-w-md mx-auto relative z-10">
-                Start generating professional audit reports today. No credit card required.
-              </p>
-              <div className="mt-8 relative z-10">
-                <Link
-                  href="/login"
-                  className="shimmer-btn inline-flex items-center gap-2 bg-brand-primary hover:bg-brand-primary-hover text-white font-semibold px-10 py-4 rounded-xl text-lg transition-all hover:-translate-y-0.5 active:translate-y-0 shadow-glow"
-                >
-                  Get Started — It&apos;s Free
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                  </svg>
-                </Link>
+              </div>
+              <div className="bento-card p-margin flex flex-col gap-md ml-xl -mt-lg z-20 rounded-xl">
+                <div className="flex items-center gap-sm pb-sm border-b border-surface-variant">
+                  <div className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center">
+                    <span className="material-symbols-outlined text-primary-container text-[16px]">robot_2</span>
+                  </div>
+                  <span className="font-label-md text-label-md text-on-surface">AuditBot</span>
+                </div>
+                <div className="bg-surface-container-low p-sm rounded-DEFAULT rounded-tl-none self-start border border-surface-variant max-w-[85%]">
+                  <p className="font-body-md text-body-md text-on-surface">Hi, I've prepared your website growth audit.</p>
+                  <span className="font-label-sm text-label-sm text-secondary mt-xs block text-right">10:42 AM</span>
+                </div>
+              </div>
+              <div className="bento-card p-margin flex flex-col gap-md mr-xl -mt-lg z-10 rounded-xl">
+                <div className="flex justify-between items-center mb-xs">
+                  <span className="font-headline-sm text-headline-sm text-on-surface">Traffic Health</span>
+                  <span className="bg-error-container text-on-error-container font-label-sm text-label-sm px-xs py-xs rounded-DEFAULT">Critical</span>
+                </div>
+                <div className="space-y-sm">
+                  <div className="flex justify-between items-end">
+                    <span className="font-label-md text-label-md text-secondary">Organic</span>
+                    <span className="font-body-md text-body-md text-on-surface">-12%</span>
+                  </div>
+                  <div className="w-full h-1 bg-surface-container rounded-full overflow-hidden">
+                    <div className="w-1/3 h-full bg-error"></div>
+                  </div>
+                  <div className="flex justify-between items-end mt-sm">
+                    <span className="font-label-md text-label-md text-secondary">Conversion</span>
+                    <span className="font-body-md text-body-md text-on-surface">1.2%</span>
+                  </div>
+                  <div className="w-full h-1 bg-surface-container rounded-full overflow-hidden">
+                    <div className="w-1/4 h-full bg-primary-container"></div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </Section>
+        </section>
+
+        {/* Section 2: How It Works & Stats (Brutalist) */}
+        <section id="how-it-works" className="max-w-7xl mx-auto px-margin mb-2xl">
+          <h2 className="font-headline-lg text-headline-lg text-on-surface mb-lg">Three steps to your next client.</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-gutter">
+            <div className="bento-card relative overflow-hidden flex flex-col h-72 justify-between group rounded-xl p-margin">
+              <span className="absolute top-sm right-md font-display-lg text-[120px] leading-none text-surface-container-high opacity-50 select-none group-hover:opacity-100 transition-opacity">01</span>
+              <div className="z-10 mt-xl">
+                <div className="border border-surface-variant rounded p-sm bg-surface mb-md w-3/4">
+                  <div className="h-2 bg-surface-container w-1/2 rounded mb-1"></div>
+                  <div className="h-2 bg-surface-container w-full rounded"></div>
+                </div>
+              </div>
+              <div className="z-10">
+                <h3 className="font-headline-md text-headline-md text-on-surface mb-xs">Input URL</h3>
+                <p className="font-body-md text-body-md text-secondary">Drop any prospect's domain into the engine. No complex setup required.</p>
+              </div>
+            </div>
+            <div className="bento-card relative overflow-hidden flex flex-col h-72 justify-between group rounded-xl p-margin">
+              <span className="absolute top-sm right-md font-display-lg text-[120px] leading-none text-surface-container-high opacity-50 select-none group-hover:opacity-100 transition-opacity">02</span>
+              <div className="z-10 mt-xl flex gap-xs flex-col w-1/2">
+                <div className="h-1 bg-primary-container w-full rounded-full animate-pulse"></div>
+                <div className="h-1 bg-surface-container w-3/4 rounded-full"></div>
+                <div className="h-1 bg-surface-container w-5/6 rounded-full"></div>
+              </div>
+              <div className="z-10">
+                <h3 className="font-headline-md text-headline-md text-on-surface mb-xs">Engine Scans</h3>
+                <p className="font-body-md text-body-md text-secondary">Our systems analyze 50+ data points for SEO, performance, and conversion leaks.</p>
+              </div>
+            </div>
+            <div className="bento-card relative overflow-hidden flex flex-col h-72 justify-between group rounded-xl p-margin">
+              <span className="absolute top-sm right-md font-display-lg text-[120px] leading-none text-surface-container-high opacity-50 select-none group-hover:opacity-100 transition-opacity">03</span>
+              <div className="z-10 mt-xl flex justify-end">
+                <div className="bg-primary-container text-on-primary p-xs rounded-DEFAULT rounded-br-none text-[10px] font-label-sm w-max">
+                  Report ready. Send?
+                </div>
+              </div>
+              <div className="z-10">
+                <h3 className="font-headline-md text-headline-md text-on-surface mb-xs">Close Deal</h3>
+                <p className="font-body-md text-body-md text-secondary">Share a stunning, actionable PDF or web link directly via email or WhatsApp.</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Stats Anchor */}
+          <div className="mt-gutter bento-card grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-surface-variant text-center rounded-xl p-margin">
+            <div className="flex flex-col gap-xs py-sm">
+              <span className="font-display-lg text-display-lg text-on-surface tracking-tight">1,247+</span>
+              <span className="font-label-md text-label-md text-secondary uppercase tracking-wider">Reports Generated</span>
+            </div>
+            <div className="flex flex-col gap-xs py-sm">
+              <span className="font-display-lg text-display-lg text-on-surface tracking-tight">342+</span>
+              <span className="font-label-md text-label-md text-secondary uppercase tracking-wider">Clients Secured</span>
+            </div>
+            <div className="flex flex-col gap-xs py-sm">
+              <span className="font-display-lg text-display-lg text-on-surface tracking-tight">87%</span>
+              <span className="font-label-md text-label-md text-secondary uppercase tracking-wider">Reply Rate</span>
+            </div>
+          </div>
+        </section>
+
+        {/* Section 3: Paradigm Shift Comparison (From 68be1...) */}
+        <section id="comparison" className="max-w-7xl mx-auto px-margin mb-2xl mt-32">
+            <div className="text-center max-w-[56rem] mx-auto mb-2xl">
+                <h2 className="font-display-lg text-display-lg tracking-tight text-on-surface mb-lg">
+                    Stop sending 40-page PDFs nobody reads.
+                </h2>
+                <p className="font-headline-sm text-headline-sm text-secondary leading-relaxed">
+                    Clients don't buy technical metrics. They buy solutions to lost revenue.
+                </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-gutter">
+                <article className="bento-card rounded-3xl p-2xl flex flex-col gap-xl">
+                    <div className="h-[280px] bg-surface-container-low rounded-lg border border-outline-variant/30 overflow-hidden relative flex items-center justify-center code-pattern">
+                        <div className="absolute inset-0 opacity-40 font-label-sm text-label-sm text-secondary p-md overflow-hidden select-none pointer-events-none">
+                            <div className="absolute top-[10%] left-[5%]">{"{\"ttfb\": \"1.2s\", \"fcp\": \"2.4s\"}"}</div>
+                            <div className="absolute top-[25%] right-[10%]">Critical Request Chains: 14</div>
+                            <div className="absolute top-[40%] left-[15%]">Cumulative Layout Shift: 0.894</div>
+                            <div className="absolute top-[60%] right-[20%]">DOM Nodes: 3,421</div>
+                            <div className="absolute top-[75%] left-[8%]">Unused JavaScript: 842kb</div>
+                            <div className="absolute top-[85%] right-[5%]">Minify CSS: Failed</div>
+                            <div className="absolute top-[15%] right-[40%]">LCP: 4.8s (Poor)</div>
+                            <div className="absolute top-[50%] left-[40%]">TBT: 850ms</div>
+                        </div>
+                        <div className="bg-surface-container-lowest border border-error-container/50 text-error font-label-md text-label-md px-lg py-sm rounded shadow-sm z-10 flex items-center gap-sm">
+                            <span className="material-symbols-outlined text-[16px]">warning</span>
+                            Error: Trace blocked
+                        </div>
+                    </div>
+                    <div className="mt-auto">
+                        <div className="font-label-md text-label-md text-secondary uppercase tracking-widest mb-sm">The Developer's Audit</div>
+                        <h3 className="font-headline-md text-headline-md text-on-surface mb-sm">Diagnostic Tools</h3>
+                        <p className="font-body-lg text-body-lg text-secondary">
+                            Built for engineers. Overwhelms prospects with jargon, leading to analysis paralysis and lost deals.
+                        </p>
+                    </div>
+                </article>
+                <article className="bento-card rounded-3xl p-2xl flex flex-col gap-xl">
+                    <div className="h-[280px] bg-surface-container-low rounded-lg border border-outline-variant/30 overflow-hidden relative flex items-center justify-center">
+                        <div className="bg-surface-container-lowest border border-outline-variant/30 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-lg w-[85%] max-w-[340px] overflow-hidden">
+                            <div className="h-1 w-full bg-[#10B981]"></div>
+                            <div className="p-lg flex flex-col gap-md">
+                                <div className="font-label-md text-label-md text-secondary uppercase tracking-wider">Estimated Revenue Leak</div>
+                                <div className="font-display-lg text-headline-lg font-bold text-on-surface tracking-tight">
+                                    ₹1.2 Lakhs<span className="text-headline-sm text-secondary">/mo</span>
+                                </div>
+                                <div className="mt-sm pt-sm border-t border-outline-variant/20 flex justify-between items-center">
+                                    <span className="font-label-sm text-label-sm text-secondary">Based on checkout drop-off</span>
+                                    <button className="bg-on-surface text-on-primary font-label-md text-label-md px-md py-sm rounded hover:opacity-90 transition-opacity">
+                                        Fix this issue
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="mt-auto">
+                        <div className="font-label-md text-label-md text-primary uppercase tracking-widest mb-sm">The Sales Asset</div>
+                        <h3 className="font-headline-md text-headline-md text-on-surface mb-sm">AuditDrop Reports</h3>
+                        <p className="font-body-lg text-body-lg text-secondary">
+                            Built for closers. Translates technical failures into exact monetary losses. When clients see what it costs them, they hire you to fix it.
+                        </p>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        {/* Section 4: Animated Features Grid (From 479f4...) */}
+        <section id="features" className="max-w-7xl mx-auto px-margin mb-2xl mt-32">
+            <div className="text-center mb-16 space-y-4">
+                <h2 className="font-display-lg text-[40px] sm:text-[48px] md:text-[56px] lg:text-[64px] text-on-surface font-bold leading-tight tracking-[-0.04em]">
+                    Everything you need<br/>to close deals
+                </h2>
+                <p className="font-body-lg text-[18px] sm:text-[20px] text-secondary max-w-[42rem] mx-auto font-medium">
+                    Professional audit reports that make prospects say 'yes'
+                </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 auto-rows-[280px]" id="bento-grid">
+                <div className="bento-card animated-card rounded-3xl p-8 flex flex-col justify-between md:col-span-2 row-span-1" style={{ transitionDelay: '100ms' }}>
+                    <div className="space-y-2">
+                        <h3 className="font-headline-md text-on-surface">Revenue Impact</h3>
+                        <p className="font-body-md text-secondary">Quantify the value of your services immediately.</p>
+                    </div>
+                    <div className="bg-surface-container-low rounded-xl p-4 flex flex-col sm:flex-row gap-4 items-center justify-between border border-[rgba(0,0,0,0.04)] group-hover:bg-white transition-colors duration-300">
+                        <div className="text-center sm:text-left">
+                            <span className="font-label-sm uppercase text-secondary block mb-1">Estimated Lost Revenue</span>
+                            <span className="font-label-md text-error text-xl font-bold tracking-tight shimmer-text">₹45,000</span>
+                        </div>
+                        <div className="hidden sm:block w-px h-12 bg-outline-variant/30"></div>
+                        <div className="text-center sm:text-left">
+                            <span className="font-label-sm uppercase text-secondary block mb-1">Recoverable Value</span>
+                            <span className="font-label-md text-[#10B981] text-xl font-bold tracking-tight shimmer-text">₹45,000</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bento-card animated-card rounded-3xl p-8 flex flex-col lg:row-span-2 relative overflow-hidden group" style={{ transitionDelay: '200ms' }}>
+                    <div className="space-y-2 relative z-10">
+                        <h3 className="font-headline-md text-on-surface">WhatsApp-Ready</h3>
+                        <p className="font-body-md text-secondary">Share stylized reports directly where your clients live.</p>
+                    </div>
+                    <div className="flex-grow flex items-center justify-center mt-6">
+                        <div className="bg-[#E7F3ED] w-full h-full min-h-[160px] rounded-2xl flex flex-col justify-end p-4 relative border border-[#25D366]/20 transition-transform duration-500 group-hover:scale-[1.02]">
+                            <div className="bg-white p-3 rounded-xl rounded-tr-sm shadow-sm self-end max-w-[85%] border border-[rgba(0,0,0,0.04)] mb-2 relative z-10 float-anim">
+                                <div className="h-2 w-16 bg-surface-container rounded-full mb-2"></div>
+                                <div className="h-2 w-24 bg-surface-container rounded-full mb-3"></div>
+                                <div className="flex items-center gap-2">
+                                    <div className="h-6 w-6 rounded bg-primary-container/10 flex items-center justify-center text-primary-container">
+                                        <span className="material-symbols-outlined text-[14px]">insert_chart</span>
+                                    </div>
+                                    <span className="font-label-sm text-on-surface font-bold">Audit Report.pdf</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bento-card animated-card rounded-3xl p-8 flex flex-col justify-between" id="seo-card" style={{ transitionDelay: '300ms' }}>
+                    <div className="space-y-2">
+                        <h3 className="font-headline-md text-on-surface">SEO Health</h3>
+                        <p className="font-body-md text-secondary">Instant technical visibility.</p>
+                    </div>
+                    <div className="flex justify-center items-center mt-4 group-hover:scale-105 transition-transform duration-300">
+                        <div className="relative w-24 h-24 flex items-center justify-center">
+                            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                                <circle cx="50" cy="50" fill="none" r="40" stroke="#f0f1f3" strokeWidth="8"></circle>
+                                <circle className="progress-ring-circle" cx="50" cy="50" fill="none" r="40" stroke="#4F46E5" strokeDasharray="251" strokeDashoffset="251" strokeWidth="8" style={{ '--target-offset': 5 } as any}></circle>
+                            </svg>
+                            <div className="absolute inset-0 flex items-center justify-center flex-col">
+                                <span className="font-label-md text-xl font-bold text-on-surface counter-val">98</span>
+                                <span className="font-label-sm text-secondary">/100</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bento-card animated-card rounded-3xl p-8 flex flex-col justify-between md:col-span-2 row-span-1 relative overflow-hidden group" style={{ transitionDelay: '400ms' }}>
+                    <div className="space-y-2 relative z-10 w-[60%]">
+                        <h3 className="font-headline-md text-on-surface">Omnichannel Views</h3>
+                        <p className="font-body-md text-secondary">Flawless presentation across all devices.</p>
+                    </div>
+                    <div className="absolute right-4 bottom-[-20px] w-[50%] h-[120%] flex items-end justify-end pointer-events-none opacity-80 group-hover:opacity-100 transition-all duration-500">
+                        <div className="absolute right-10 bottom-10 w-48 h-32 bg-white rounded-lg border border-outline-variant shadow-lg flex flex-col overflow-hidden float-subtle-anim transition-transform duration-500 group-hover:translate-x-[-10px] group-hover:translate-y-[-10px]">
+                            <div className="h-4 bg-surface-container-low border-b border-outline-variant flex items-center px-2 gap-1">
+                                <div className="w-1.5 h-1.5 rounded-full bg-error-container"></div>
+                                <div className="w-1.5 h-1.5 rounded-full bg-tertiary-fixed-dim"></div>
+                                <div className="w-1.5 h-1.5 rounded-full bg-[#10B981]/40"></div>
+                            </div>
+                            <div className="p-2 space-y-1.5">
+                                <div className="h-2 w-1/3 bg-surface-container rounded-sm"></div>
+                                <div className="h-12 w-full bg-surface-container-low rounded-sm"></div>
+                            </div>
+                        </div>
+                        <div className="absolute right-4 bottom-4 w-16 h-32 bg-white rounded-xl border-2 border-outline-variant shadow-xl flex flex-col overflow-hidden z-10 float-subtle-anim transition-transform duration-500 group-hover:translate-x-[-5px] group-hover:translate-y-[-5px]" style={{ animationDelay: '1s' }}>
+                            <div className="h-3 bg-surface-container-low flex justify-center items-center">
+                                <div className="w-4 h-0.5 bg-outline-variant rounded-full"></div>
+                            </div>
+                            <div className="p-1.5 space-y-1 mt-1">
+                                <div className="h-1.5 w-1/2 bg-surface-container rounded-sm"></div>
+                                <div className="h-8 w-full bg-primary/10 rounded-sm"></div>
+                                <div className="h-6 w-full bg-surface-container-low rounded-sm"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bento-card animated-card rounded-3xl p-8 flex flex-col justify-between" style={{ transitionDelay: '500ms' }}>
+                    <div className="space-y-2">
+                        <h3 className="font-headline-md text-on-surface">GBP Ready</h3>
+                        <p className="font-body-md text-secondary">Highlight stellar local reputation.</p>
+                    </div>
+                    <div className="flex justify-center items-center gap-1 mt-6 group-hover:scale-110 transition-transform duration-300">
+                        <span className="material-symbols-outlined text-[32px] text-[#F59E0B]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                        <span className="material-symbols-outlined text-[32px] text-[#F59E0B]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                        <span className="material-symbols-outlined text-[32px] text-[#F59E0B]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                        <span className="material-symbols-outlined text-[32px] text-[#F59E0B]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                        <span className="material-symbols-outlined text-[32px] text-[#F59E0B]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                    </div>
+                </div>
+
+                <div className="bento-card animated-card rounded-3xl p-8 flex flex-col justify-between" style={{ transitionDelay: '600ms' }}>
+                    <div className="space-y-2">
+                        <h3 className="font-headline-md text-on-surface">Prospect CRM</h3>
+                        <p className="font-body-md text-secondary">Visual pipeline management.</p>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 mt-6 h-20 group-hover:gap-3 transition-all duration-300">
+                        <div className="bg-surface-container-low rounded-lg p-1.5 flex flex-col gap-1.5 group-hover:bg-surface-container transition-colors duration-300">
+                            <div className="w-full h-1 bg-outline-variant/30 rounded-full mb-1"></div>
+                            <div className="w-full h-4 bg-white rounded-sm shadow-sm border border-[rgba(0,0,0,0.02)]"></div>
+                            <div className="w-full h-4 bg-white rounded-sm shadow-sm border border-[rgba(0,0,0,0.02)]"></div>
+                        </div>
+                        <div className="bg-surface-container-low rounded-lg p-1.5 flex flex-col gap-1.5 group-hover:bg-surface-container transition-colors duration-300">
+                            <div className="w-full h-1 bg-outline-variant/30 rounded-full mb-1"></div>
+                            <div className="w-full h-4 bg-primary-container/20 border border-primary-container/30 rounded-sm shadow-sm float-subtle-anim"></div>
+                        </div>
+                        <div className="bg-surface-container-low rounded-lg p-1.5 flex flex-col gap-1.5 group-hover:bg-surface-container transition-colors duration-300">
+                            <div className="w-full h-1 bg-outline-variant/30 rounded-full mb-1"></div>
+                            <div className="w-full h-4 bg-[#10B981]/20 border border-[#10B981]/30 rounded-sm shadow-sm float-subtle-anim" style={{ animationDelay: '0.5s' }}></div>
+                            <div className="w-full h-4 bg-white rounded-sm shadow-sm border border-[rgba(0,0,0,0.02)]"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        {/* Section 5: CTA (From 7f560...) */}
+        <section className="mt-32 max-w-7xl mx-auto px-margin mb-32">
+            <div className="bento-card rounded-3xl flex flex-col lg:flex-row gap-lg p-8 md:p-16">
+                <div className="lg:w-7/12 flex flex-col justify-center pr-xl">
+                    <h2 className="font-display-lg text-display-lg text-on-surface tracking-tight mb-md">
+                        Stop leaving money on the table.
+                    </h2>
+                    <p className="font-body-lg text-body-lg text-secondary mb-xl max-w-[36rem]">
+                        Generate your first client-winning audit in the next 30 seconds. No credit card required.
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-md">
+                        <Link href="/login" className="bg-[#0A0A0A] text-[#FFFFFF] font-label-md text-label-md px-lg py-sm rounded hover:opacity-90 transition-opacity w-fit flex items-center justify-center hover:-translate-y-0.5 hover:shadow-lg transition-all duration-300">
+                            Get Started — It's Free
+                        </Link>
+                        <button className="text-on-surface font-label-md text-label-md px-lg py-sm rounded hover:bg-black/5 transition-all w-fit flex items-center justify-center underline-offset-4 hover:underline">View Pricing</button>
+                    </div>
+                </div>
+                <div className="lg:w-5/12 relative h-64 lg:h-auto flex items-center justify-center mt-12 lg:mt-0">
+                    <div className="relative w-full max-w-[24rem] h-full pt-12">
+                        <div className="micro-card absolute top-0 left-8 right-8 h-20 rounded-xl p-md flex items-center opacity-60 scale-90 -z-20">
+                            <div className="w-3 h-3 rounded-full bg-green-500 mr-md"></div>
+                            <span className="font-label-md text-label-md text-on-surface-variant">Report sent via WhatsApp</span>
+                        </div>
+                        <div className="micro-card absolute top-6 left-4 right-4 h-20 rounded-xl p-md flex items-center opacity-80 scale-95 -z-10">
+                            <span className="material-symbols-outlined text-outline mr-md" style={{ fontVariationSettings: "'FILL' 0" }}>visibility</span>
+                            <span className="font-label-md text-label-md text-on-surface-variant">Client viewed report</span>
+                        </div>
+                        <div className="micro-card absolute top-12 left-0 right-0 h-24 rounded-xl p-md flex items-center border border-outline-variant/30 shadow-lg bg-surface-container-lowest z-10 group cursor-pointer relative">
+                            <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center mr-md text-green-600">
+                                <span className="material-symbols-outlined group-hover:scale-110 transition-transform duration-300" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="font-label-sm text-label-sm text-secondary uppercase tracking-wider mb-xs">Status Update</span>
+                                <span className="font-headline-sm text-headline-sm text-[#0A0A0A]">Invoice Paid: ₹45,000</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
       </main>
 
-      {/* ── Footer ── */}
-      <footer className="border-t border-bg-border py-8">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-text-muted">
-          <p>© {new Date().getFullYear()} AuditDrop. Built for freelancers who hustle.</p>
-          <div className="flex items-center gap-4">
-            <Link href="/login" className="hover:text-text-secondary transition-colors">Dashboard</Link>
-          </div>
+      {/* Footer Section */}
+      <footer className="bg-surface-container-low w-full pt-32 pb-lg relative overflow-hidden border-t border-outline-variant/20 mt-auto">
+        <div className="max-w-7xl mx-auto px-margin relative z-10 flex flex-col md:flex-row justify-between items-start gap-xl">
+            <div className="w-full md:w-1/4 flex flex-col gap-md">
+                <div className="font-headline-sm text-headline-sm font-bold text-on-surface">
+                    AuditDrop
+                </div>
+                <p className="font-body-md text-body-md text-on-surface-variant">
+                    Built for freelancers who actually want to close deals.
+                </p>
+                <div className="font-label-sm text-label-sm text-secondary mt-xl">
+                    © 2024 AuditDrop. All rights reserved.
+                </div>
+            </div>
+            <div className="w-full md:w-3/4 flex flex-wrap sm:flex-nowrap justify-between md:justify-end gap-xl md:gap-2xl">
+                <div className="flex flex-col gap-sm">
+                    <h4 className="font-label-sm text-label-sm text-on-surface uppercase tracking-widest font-bold mb-xs">Product</h4>
+                    <Link className="font-body-md text-body-md text-secondary hover:text-primary transition-colors underline-offset-4 hover:underline duration-200 hover:text-on-surface" href="#">Features</Link>
+                    <Link className="font-body-md text-body-md text-secondary hover:text-primary transition-colors underline-offset-4 hover:underline duration-200 hover:text-on-surface" href="#">Pricing</Link>
+                    <Link className="font-body-md text-body-md text-secondary hover:text-primary transition-colors underline-offset-4 hover:underline duration-200 hover:text-on-surface" href="#">How it Works</Link>
+                </div>
+                <div className="flex flex-col gap-sm">
+                    <h4 className="font-label-sm text-label-sm text-on-surface uppercase tracking-widest font-bold mb-xs">Resources</h4>
+                    <Link className="font-body-md text-body-md text-secondary hover:text-primary transition-colors underline-offset-4 hover:underline duration-200 hover:text-on-surface" href="#">Blog</Link>
+                    <Link className="font-body-md text-body-md text-secondary hover:text-primary transition-colors underline-offset-4 hover:underline duration-200 hover:text-on-surface" href="#">Templates</Link>
+                    <Link className="font-body-md text-body-md text-secondary hover:text-primary transition-colors underline-offset-4 hover:underline duration-200 hover:text-on-surface" href="#">Help Center</Link>
+                </div>
+                <div className="flex flex-col gap-sm">
+                    <h4 className="font-label-sm text-label-sm text-on-surface uppercase tracking-widest font-bold mb-xs">Company</h4>
+                    <Link className="font-body-md text-body-md text-secondary hover:text-primary transition-colors underline-offset-4 hover:underline duration-200 hover:text-on-surface" href="#">About</Link>
+                    <Link className="font-body-md text-body-md text-secondary hover:text-primary transition-colors underline-offset-4 hover:underline duration-200 hover:text-on-surface" href="#">Privacy Policy</Link>
+                    <Link className="font-body-md text-body-md text-secondary hover:text-primary transition-colors underline-offset-4 hover:underline duration-200 hover:text-on-surface" href="#">Terms of Service</Link>
+                    <Link className="font-body-md text-body-md text-secondary hover:text-primary transition-colors underline-offset-4 hover:underline duration-200 hover:text-on-surface" href="#">Contact</Link>
+                </div>
+            </div>
+        </div>
+        <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-none pointer-events-none select-none flex justify-center translate-y-1/3">
+            <span className="font-display-lg text-[15vw] font-bold text-outline-variant/10 tracking-tighter whitespace-nowrap">
+                AUDITDROP
+            </span>
         </div>
       </footer>
-    </div>
+    </>
   );
 }
